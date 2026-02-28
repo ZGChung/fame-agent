@@ -97,8 +97,9 @@ class VideoGenerator:
         output_dir = Path(output_path).parent
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # 如果只有一张图片，直接复制
+        # 如果只有一张图片，使用 Ken Burns 效果
         if len(images) == 1:
+            # Ken Burns: slow zoom in
             cmd = [
                 'ffmpeg', '-y',
                 '-loop', '1',
@@ -106,7 +107,7 @@ class VideoGenerator:
                 '-c:v', 'libx264',
                 '-t', str(duration),
                 '-pix_fmt', 'yuv420p',
-                '-vf', f'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+                '-vf', f'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,zoompan=z=\'min(zoom+0.001,1.5)\':d={int(duration*25)}:s=1080x1920',
                 output_path
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
