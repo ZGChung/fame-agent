@@ -245,6 +245,134 @@ class VideoGenerator:
         # 等待官方发布后实现
         raise NotImplementedError("Seedance 2.0 API 集成开发中 - 等待官方发布")
     
+    async def add_subtitles(
+        self,
+        video_path: str,
+        subtitles: List[dict],
+        output_path: str = None
+    ) -> str:
+        """
+        为视频添加字幕
+        
+        注意: 需要 ffmpeg 编译时包含 --enable-libass 才能使用
+        当前版本不支持，保留接口供将来使用
+        
+        Args:
+            video_path: 视频路径
+            subtitles: 字幕列表 [{"text": "文字", "start": 0, "end": 3}]
+            output_path: 输出路径
+        
+        Returns:
+            str: 带字幕的视频路径
+        """
+        # TODO: 需要重新编译 ffmpeg --enable-libass 才能使用字幕功能
+        # 当前版本不支持 subtitles 滤镜
+        raise NotImplementedError(
+            "字幕功能需要 ffmpeg 包含 libass 支持。"
+            "请使用 Homebrew 重新安装: brew reinstall ffmpeg --with-libass"
+        )
+    
+    def _format_srt_time(self, seconds: float) -> str:
+        """格式化 SRT 时间"""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        millis = int((seconds % 1) * 1000)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+    
+    async def add_background_music(
+        self,
+        video_path: str,
+        music_path: str,
+        output_path: str = None,
+        music_volume: float = 0.3
+    ) -> str:
+        """
+        添加背景音乐
+        
+        Args:
+            video_path: 视频路径
+            music_path: 音乐文件路径
+            output_path: 输出路径
+            music_volume: 音乐音量 (0.0-1.0)
+        
+        Returns:
+            str: 带背景音乐的视频路径
+        """
+        if not output_path:
+            output_path = video_path.replace('.mp4', '_with_music.mp4')
+        
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-i', music_path,
+            '-filter_complex',
+            f'[1:a]volume={music_volume}[music];[0:a][music]amix=inputs=2:duration=first[aout]',
+            '-map', '0:v',
+            '-map', '[aout]',
+            '-c:v', 'copy',
+            '-shortest',
+            output_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        if result.returncode == 0:
+            return output_path
+        raise RuntimeError(f"背景音乐添加失败: {result.stderr[:200]}")
+    
+    async def create_ken_burns_video(
+        self,
+        image_path: str,
+        output_path: str = None,
+        duration: float = 5.0,
+        zoom_direction: str = "in"
+    ) -> str:
+        """
+        创建 Ken Burns 效果视频（自动缩放）
+        
+        Args:
+            image_path: 图片路径
+            output_path: 输出路径
+            duration: 视频时长
+            zoom_direction: 缩放方向 ("in", "out", "pan")
+        
+        Returns:
+            str: 生成的视频路径
+        """
+        if not output_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"output/{timestamp}_kenburns.mp4"
+        
+        output_dir = Path(output_path).parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 根据缩放方向设置 zoom 值
+        if zoom_direction == "in":
+            zoom_expr = "min(zoom+0.001,1.5)"
+        elif zoom_direction == "out":
+            zoom_expr = "max(zoom-0.001,0.5)"
+        else:  # pan
+            zoom_expr = "1.0+0.1*sin(t)"
+        
+        cmd = [
+            'ffmpeg', '-y',
+            '-loop', '1',
+            '-i', image_path,
+            '-c:v', 'libx264',
+            '-t', str(duration),
+            '-pix_fmt', 'yuv420p',
+            '-vf', f'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,zoompan=z=\'{zoom_expr}\':d={int(duration*25)}:s=1080x1920',
+            '-r', '30',
+            output_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            return output_path
+        raise RuntimeError(f"Ken Burns 视频生成失败: {result.stderr}")
+    
     async def add_audio(
         self,
         video_path: str,
@@ -442,6 +570,198 @@ async def quick_video(
 
 
 async def generate_from_content(content_id: str, base_dir: str = None) -> str:
+    """
+    从内容ID生成完整视频（含TTS）
+    
+    Args:
+        content_id: 内容ID（如 011）
+        base_dir: 基础目录
+    
+    Returns:
+        str: 生成的视频路径
+    """
+    from pathlib import Path
+    
+    if not base_dir:
+        base_dir = Path(__file__).parent.parent
+    else:
+        base_dir = Path(base_dir)
+    
+    # 查找内容文件
+    content_file = None
+    for folder in ['input', 'processing']:
+        folder_path = base_dir / folder
+        for f in folder_path.glob(f"{content_id}_*.md"):
+            content_file = f
+            break
+        if content_file:
+            break
+    
+    if not content_file:
+        raise FileNotFoundError(f"未找到内容: {content_id}")
+    
+    # 读取内容
+    with open(content_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 提取标题和正文
+    title = ""
+    body = ""
+    in_frontmatter = False
+    for line in content.split('\n'):
+        if line.strip() == '---':
+            in_frontmatter = not in_frontmatter
+        elif not in_frontmatter:
+            if line.startswith('# '):
+                title = line[2:].strip()
+            elif line.strip():
+                body += line + '\n'
+    
+    # 查找图片
+    images = []
+    input_folder = base_dir / 'input'
+    for ext in ['.jpg', '.jpeg', '.png']:
+        for img in input_folder.glob(f"{content_id}*{ext}"):
+            images.append(str(img))
+    
+    if not images:
+        raise FileNotFoundError(f"未找到内容 {content_id} 的图片")
+    
+    # 生成视频
+    gen = VideoGenerator()
+    output_dir = base_dir / 'output'
+    output_dir.mkdir(exist_ok=True)
+    
+    video_path = await gen.generate_from_images(
+        images,
+        str(output_dir / f"{content_id}_final_video.mp4"),
+        duration_per_image=4.0
+    )
+    
+    # 生成 TTS
+    tts_text = title + '。' + body[:500]  # 限制长度
+    audio_path = await gen._generate_tts(tts_text)
+    
+    # 合并
+    final_path = await gen.add_audio(video_path, audio_path=audio_path)
+    
+    return final_path
+
+
+async def generate_complete_video(
+    content_id: str,
+    base_dir: str = None,
+    with_subtitles: bool = True,
+    background_music: str = None
+) -> str:
+    """
+    生成完整视频（含字幕、背景音乐）
+    
+    Args:
+        content_id: 内容ID
+        base_dir: 基础目录
+        with_subtitles: 是否添加字幕
+        background_music: 背景音乐路径
+    
+    Returns:
+        str: 最终视频路径
+    """
+    from pathlib import Path
+    
+    if not base_dir:
+        base_dir = Path(__file__).parent.parent
+    else:
+        base_dir = Path(base_dir)
+    
+    gen = VideoGenerator()
+    output_dir = base_dir / 'output'
+    
+    # 1. 生成基础视频
+    images = []
+    input_folder = base_dir / 'input'
+    for ext in ['.jpg', '.jpeg', '.png']:
+        for img in input_folder.glob(f"{content_id}*{ext}"):
+            images.append(str(img))
+    
+    if not images:
+        raise FileNotFoundError(f"未找到图片: {content_id}")
+    
+    video_path = await gen.generate_from_images(
+        images,
+        str(output_dir / f"{content_id}_step1_video.mp4"),
+        duration_per_image=4.0
+    )
+    
+    # 2. 读取内容生成 TTS
+    content_file = None
+    for folder in ['input', 'processing']:
+        folder_path = base_dir / folder
+        for f in folder_path.glob(f"{content_id}_*.md"):
+            content_file = f
+            break
+        if content_file:
+            break
+    
+    title = ""
+    body = ""
+    if content_file:
+        with open(content_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        in_frontmatter = False
+        for line in content.split('\n'):
+            if line.strip() == '---':
+                in_frontmatter = not in_frontmatter
+            elif not in_frontmatter:
+                if line.startswith('# '):
+                    title = line[2:].strip()
+                elif line.strip():
+                    body += line + ' '
+    
+    # 生成 TTS
+    tts_text = f"{title}。{body[:300]}"
+    audio_path = await gen._generate_tts(tts_text)
+    
+    # 3. 添加 TTS 音频
+    video_path = await gen.add_audio(
+        video_path,
+        audio_path=audio_path,
+        output_path=str(output_dir / f"{content_id}_step2_with_audio.mp4")
+    )
+    
+    # 4. 添加字幕（可选）
+    if with_subtitles and tts_text:
+        # 简单按时间平均分配字幕
+        duration = 4.0 * len(images)
+        num_subs = min(len(tts_text) // 20, 10)  # 每20字一个字幕，最多10个
+        if num_subs > 0:
+            sub_duration = duration / num_subs
+            subtitles = []
+            words = tts_text[:200].split('。')  # 简单分句
+            for i, segment in enumerate(words[:num_subs]):
+                if segment.strip():
+                    subtitles.append({
+                        "text": segment.strip() + "。",
+                        "start": i * sub_duration,
+                        "end": (i + 1) * sub_duration
+                    })
+            
+            if subtitles:
+                video_path = await gen.add_subtitles(
+                    video_path,
+                    subtitles,
+                    str(output_dir / f"{content_id}_step3_with_subtitles.mp4")
+                )
+    
+    # 5. 添加背景音乐（可选）
+    if background_music and Path(background_music).exists():
+        video_path = await gen.add_background_music(
+            video_path,
+            background_music,
+            str(output_dir / f"{content_id}_final_complete.mp4")
+        )
+    
+    return video_path
     """
     从内容ID生成完整视频（含TTS）
     
