@@ -1,0 +1,47 @@
+{
+  "version": "1.1",
+  "description": "Jayson's Content Pipeline - 创意到发布自动化系统",
+  "input_folder": "input",
+  "processing_folder": "processing",
+  "output_folder": "output",
+  "queue_folder": "queue",
+  "platforms": [
+    {
+      "id": "twitter",
+      "name": "Twitter/X",
+      "max_chars": 280,
+      "language": "zh-CN",
+      "enabled": true
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "max_chars": 3000,
+      "language": "en-US",
+      "enabled": true
+    },
+    {
+      "id": "zhihu",
+      "name": "知乎",
+      "max_chars": 10000,
+      "language": "zh-CN",
+      "enabled": true
+    },
+    {
+      "id": "rednote",
+      "name": "小红书",
+      "max_chars": 1000,
+      "language": "zh-CN",
+      "enabled": true,
+      "note": "支持图片+文字，标签用emoji"
+    }
+  ],
+  "status_options": [
+    "idea",
+    "drafting",
+    "reviewing",
+    "scheduled",
+    "published",
+    "archived"
+  ]
+}

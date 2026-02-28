@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenClaw
+.sessions_cache.json
+openclaw.env
+
+# Content Pipeline
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.mov
+queue/
+processing/
+output/
