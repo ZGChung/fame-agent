@@ -26,6 +26,15 @@
 - **每小时**：汇报开发进度
 - **每天 20:00**：继续开发 pipeline 功能
 
+## 视频生成能力 (2026-03)
+
+- [x] FFmpeg 幻灯片视频生成
+- [x] Ken Burns 特效 (zoom in/out/pan)
+- [x] TTS 音频支持 (ElevenLabs + macOS say)
+- [x] 背景音乐添加
+- [x] VideoScheduler 自动调度器
+- [x] 9:16 竖屏格式 (1080x1920)
+
 ## 进度
 
 - [x] 添加小红书平台支持到 config.json
@@ -38,3 +47,4 @@
 - [x] 配置小红书登录 Cookie
 - [x] 测试发布流程 ✅ 成功！
 - [x] 自动发布功能已完成
+- [x] 视频生成管道已完成
