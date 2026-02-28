@@ -74,6 +74,11 @@
       "heygen": {
         "api_key": "",
         "model": "avatar"
+      },
+      "seedance": {
+        "api_key": "",
+        "model": "2.0",
+        "note": "即将支持"
       }
     },
     "tts": {

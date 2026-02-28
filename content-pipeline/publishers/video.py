@@ -183,7 +183,7 @@ class VideoGenerator:
         
         Args:
             prompt: 视频描述
-            service: 服务商 (runway, pika, luma)
+            service: 服务商 (runway, pika, luma, seedance)
             output_path: 输出路径
         
         Returns:
@@ -195,6 +195,8 @@ class VideoGenerator:
             return await self._pika_generate(prompt, output_path)
         elif service == "luma":
             return await self._luma_generate(prompt, output_path)
+        elif service == "seedance":
+            return await self._seedance_generate(prompt, output_path)
         else:
             raise ValueError(f"不支持的服务: {service}")
     
@@ -225,6 +227,23 @@ class VideoGenerator:
         
         # TODO: 实现 Luma API 调用
         raise NotImplementedError("Luma API 集成开发中")
+    
+    async def _seedance_generate(self, prompt: str, output_path: str) -> str:
+        """
+        Seedance 2.0 API
+        
+        注意: Seedance 2.0 可能尚未公开发布，等待官方 API
+        """
+        api_key = self.video_config.get('seedance_api_key')
+        if not api_key:
+            # 如果没有 API Key，使用本地生成作为备选
+            print("⚠️ Seedance API Key 未配置，使用本地视频生成")
+            # 返回空字符串让调用方使用本地生成
+            return ""
+        
+        # TODO: Seedance 2.0 API 集成
+        # 等待官方发布后实现
+        raise NotImplementedError("Seedance 2.0 API 集成开发中 - 等待官方发布")
     
     async def add_audio(
         self,
