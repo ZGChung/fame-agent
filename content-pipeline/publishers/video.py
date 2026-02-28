@@ -444,6 +444,41 @@ class VideoGenerator:
             return output_path
         raise RuntimeError(f"音频合并失败: {result.stderr}")
     
+    def _detect_language(self, text: str) -> str:
+        """检测文本语言
+        
+        Args:
+            text: 待检测文本
+            
+        Returns:
+            'zh' for Chinese, 'en' for English
+        """
+        # 统计中文字符数量
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        total_chars = len(text)
+        
+        if total_chars == 0:
+            return 'en'
+        
+        # 如果中文字符超过 30%，认为是中文
+        return 'zh' if chinese_chars / total_chars > 0.3 else 'en'
+    
+    def _get_voice_for_language(self, language: str) -> str:
+        """根据语言获取合适的语音
+        
+        Args:
+            language: 'zh' or 'en'
+            
+        Returns:
+            语音名称
+        """
+        tts_config = self.video_config.get('tts', {})
+        
+        if language == 'zh':
+            return tts_config.get('fallback_voice_zh', 'Tingting')
+        else:
+            return tts_config.get('fallback_voice_en', 'Daniel')
+    
     async def _generate_tts(self, text: str, output_path: str = None, voice: str = None) -> str:
         """生成 TTS 音频
         
@@ -454,6 +489,12 @@ class VideoGenerator:
             output_path: 输出路径
             voice: 语音名称 (默认自动选择中/英文)
         """
+        # 自动检测语言并选择语音
+        if not voice:
+            language = self._detect_language(text)
+            voice = self._get_voice_for_language(language)
+            print(f"自动检测语言: {language}, 使用语音: {voice}")
+        
         # 优先使用 ElevenLabs
         tts_config = self.video_config.get('tts', {})
         elevenlabs_key = tts_config.get('api_key') or os.getenv('ELEVENLABS_API_KEY')
