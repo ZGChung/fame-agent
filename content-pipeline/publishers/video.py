@@ -275,7 +275,76 @@ class VideoGenerator:
         raise RuntimeError(f"音频合并失败: {result.stderr}")
     
     async def _generate_tts(self, text: str, output_path: str = None, voice: str = None) -> str:
-        """生成 TTS 音频 (使用 macOS say 命令)
+        """生成 TTS 音频
+        
+        优先使用 ElevenLabs（如果配置），否则使用 macOS say 命令
+        
+        Args:
+            text: 要转换的文字
+            output_path: 输出路径
+            voice: 语音名称 (默认自动选择中/英文)
+        """
+        # 优先使用 ElevenLabs
+        tts_config = self.video_config.get('tts', {})
+        elevenlabs_key = tts_config.get('api_key') or os.getenv('ELEVENLABS_API_KEY')
+        
+        if elevenlabs_key:
+            return await self._generate_elevenlabs(text, output_path, voice, elevenlabs_key)
+        
+        # 回退到 macOS say 命令
+        return await self._generate_tts_say(text, output_path, voice)
+    
+    async def _generate_elevenlabs(
+        self, 
+        text: str, 
+        output_path: str = None, 
+        voice: str = None,
+        api_key: str = None
+    ) -> str:
+        """使用 ElevenLabs 生成 TTS"""
+        import urllib.request
+        import urllib.parse
+        
+        tts_config = self.video_config.get('tts', {})
+        voice_id = voice or tts_config.get('voice_id', 'rachel')
+        
+        if not output_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"output/{timestamp}_tts.mp3"
+        
+        output_dir = Path(output_path).parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # ElevenLabs API
+        url = f"https://api.elevenlabs.io/v1/text_to_speech/{voice_id}"
+        
+        headers = {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': api_key
+        }
+        
+        data = json.dumps({
+            'text': text,
+            'model_id': 'eleven_monolingual_v1',
+            'voice_settings': {
+                'stability': 0.5,
+                'similarity_boost': 0.75
+            }
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                with open(output_path, 'wb') as f:
+                    f.write(response.read())
+            return output_path
+        except Exception as e:
+            raise RuntimeError(f"ElevenLabs TTS 失败: {e}")
+    
+    async def _generate_tts_say(self, text: str, output_path: str = None, voice: str = None) -> str:
+        """使用 macOS say 命令生成 TTS
         
         Args:
             text: 要转换的文字
