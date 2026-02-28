@@ -441,6 +441,85 @@ async def quick_video(
     return video_path
 
 
+async def generate_from_content(content_id: str, base_dir: str = None) -> str:
+    """
+    从内容ID生成完整视频（含TTS）
+    
+    Args:
+        content_id: 内容ID（如 011）
+        base_dir: 基础目录
+    
+    Returns:
+        str: 生成的视频路径
+    """
+    from pathlib import Path
+    
+    if not base_dir:
+        base_dir = Path(__file__).parent.parent
+    else:
+        base_dir = Path(base_dir)
+    
+    # 查找内容文件
+    content_file = None
+    for folder in ['input', 'processing']:
+        folder_path = base_dir / folder
+        for f in folder_path.glob(f"{content_id}_*.md"):
+            content_file = f
+            break
+        if content_file:
+            break
+    
+    if not content_file:
+        raise FileNotFoundError(f"未找到内容: {content_id}")
+    
+    # 读取内容
+    with open(content_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 提取标题和正文
+    title = ""
+    body = ""
+    in_frontmatter = False
+    for line in content.split('\n'):
+        if line.strip() == '---':
+            in_frontmatter = not in_frontmatter
+        elif not in_frontmatter:
+            if line.startswith('# '):
+                title = line[2:].strip()
+            elif line.strip():
+                body += line + '\n'
+    
+    # 查找图片
+    images = []
+    input_folder = base_dir / 'input'
+    for ext in ['.jpg', '.jpeg', '.png']:
+        for img in input_folder.glob(f"{content_id}*{ext}"):
+            images.append(str(img))
+    
+    if not images:
+        raise FileNotFoundError(f"未找到内容 {content_id} 的图片")
+    
+    # 生成视频
+    gen = VideoGenerator()
+    output_dir = base_dir / 'output'
+    output_dir.mkdir(exist_ok=True)
+    
+    video_path = await gen.generate_from_images(
+        images,
+        str(output_dir / f"{content_id}_final_video.mp4"),
+        duration_per_image=4.0
+    )
+    
+    # 生成 TTS
+    tts_text = title + '。' + body[:500]  # 限制长度
+    audio_path = await gen._generate_tts(tts_text)
+    
+    # 合并
+    final_path = await gen.add_audio(video_path, audio_path=audio_path)
+    
+    return final_path
+
+
 if __name__ == "__main__":
     import sys
     

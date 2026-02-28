@@ -83,7 +83,9 @@
     },
     "tts": {
       "provider": "elevenlabs",
-      "voice_id": "rachel"
+      "voice_id": "rachel",
+      "fallback_voice_zh": "Tingting",
+      "fallback_voice_en": "Daniel"
     }
   },
   "status_options": [
