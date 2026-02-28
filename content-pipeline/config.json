@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "description": "Jayson's Content Pipeline - 创意到发布自动化系统",
   "input_folder": "input",
   "processing_folder": "processing",
@@ -34,8 +34,53 @@
       "language": "zh-CN",
       "enabled": true,
       "note": "支持图片+文字，标签用emoji"
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "max_chars": 5000,
+      "language": "zh-CN",
+      "enabled": false,
+      "note": "视频平台，需要视频生成"
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "max_chars": 2200,
+      "language": "zh-CN",
+      "enabled": false,
+      "note": "短视频平台，需要视频生成"
     }
   ],
+  "video": {
+    "enabled": true,
+    "default_service": "ffmpeg",
+    "duration_per_image": 3.0,
+    "transition": "fade",
+    "resolution": "1080x1920",
+    "services": {
+      "runway": {
+        "api_key": "",
+        "model": "gen3a"
+      },
+      "pika": {
+        "api_key": "",
+        "model": "pika-1.0"
+      },
+      "luma": {
+        "api_key": "",
+        "model": "dream-machine"
+      },
+      "heygen": {
+        "api_key": "",
+        "model": "avatar"
+      }
+    },
+    "tts": {
+      "provider": "elevenlabs",
+      "voice_id": "rachel"
+    }
+  },
   "status_options": [
     "idea",
     "drafting",

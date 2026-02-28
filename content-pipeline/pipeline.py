@@ -288,5 +288,58 @@ if __name__ == "__main__":
             status = "✅" if pm.is_publisher_ready(platform) else "⚠️"
             print(f"  {platform}: {status}")
     
+    elif cmd == "video":
+        # 视频生成命令
+        import asyncio
+        from publishers.video import VideoGenerator
+        
+        vg = VideoGenerator()
+        
+        # 解析参数
+        if len(sys.argv) > 2 and sys.argv[2] == 'generate':
+            # 生成视频
+            content_id = sys.argv[3] if len(sys.argv) > 3 else None
+            
+            if not content_id:
+                print("Usage: pipeline.py video generate <content_id>")
+                sys.exit(1)
+            
+            # 查找内容对应的图片
+            folders = get_folders()
+            input_folder = folders['input']
+            
+            # 找图片
+            images = []
+            for ext in ['.jpg', '.jpeg', '.png']:
+                for img in input_folder.glob(f"{content_id}*{ext}"):
+                    if str(img) not in images:
+                        images.append(str(img))
+            
+            if not images:
+                print(f"❌ 未找到内容 {content_id} 对应的图片")
+                sys.exit(1)
+            
+            # 去重
+            images = list(set(images))
+            
+            if not images:
+                print(f"❌ 未找到内容 {content_id} 对应的图片")
+                sys.exit(1)
+            
+            print(f"🎬 找到 {len(images)} 张图片，开始生成视频...")
+            
+            async def gen():
+                output_path = f"output/{content_id}_video.mp4"
+                path = await vg.generate_from_images(images, output_path)
+                return path
+            
+            result = asyncio.run(gen())
+            print(f"✅ 视频生成成功: {result}")
+        else:
+            print("📹 视频生成器")
+            print(f"配置状态: {'✅ 已配置' if vg.is_configured() else '⚠️ 本地 ffmpeg'}")
+            print("\nUsage:")
+            print("  pipeline.py video generate <content_id>  - 从图片生成视频")
+    
     else:
         print(f"Unknown command: {cmd}")
