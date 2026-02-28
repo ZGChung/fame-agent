@@ -116,16 +116,22 @@ class VideoGenerator:
         # 多张图片：创建片段后合并
         try:
             temp_videos = []
+            # 使用绝对路径确保正确
+            output_dir = Path(output_path).resolve().parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
             for i, img in enumerate(images):
+                img_path = Path(img).resolve()
                 temp_out = output_dir / f"temp_{i}.mp4"
                 cmd = [
                     'ffmpeg', '-y',
                     '-loop', '1',
-                    '-i', img,
+                    '-i', str(img_path),
                     '-c:v', 'libx264',
                     '-t', str(duration),
                     '-pix_fmt', 'yuv420p',
                     '-vf', f'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+                    '-r', '30',
                     str(temp_out)
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -134,7 +140,7 @@ class VideoGenerator:
                     return False
                 temp_videos.append(str(temp_out))
             
-            # 合并
+            # 合并 - 使用 concat demuxer 方式
             concat_file = output_dir / "concat.txt"
             with open(concat_file, 'w') as f:
                 for v in temp_videos:
@@ -145,11 +151,15 @@ class VideoGenerator:
                 '-f', 'concat',
                 '-safe', '0',
                 '-i', str(concat_file),
-                '-c', 'copy',
+                '-c:v', 'libx264',
+                '-preset', 'fast',
+                '-crf', '23',
+                '-c:a', 'aac',
+                '-b:a', '128k',
                 output_path
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             
             # 清理
             for v in temp_videos:
@@ -264,8 +274,22 @@ class VideoGenerator:
             return output_path
         raise RuntimeError(f"音频合并失败: {result.stderr}")
     
-    async def _generate_tts(self, text: str, output_path: str = None) -> str:
-        """生成 TTS 音频 (使用 macOS say 命令)"""
+    async def _generate_tts(self, text: str, output_path: str = None, voice: str = None) -> str:
+        """生成 TTS 音频 (使用 macOS say 命令)
+        
+        Args:
+            text: 要转换的文字
+            output_path: 输出路径
+            voice: 语音名称 (默认自动选择中/英文)
+        """
+        # 自动选择语音
+        if not voice:
+            # 简单的中英文检测
+            if any('\u4e00' <= c <= '\u9fff' for c in text):
+                voice = "Tingting"  # 中文女声
+            else:
+                voice = "Daniel"  # 英文字音
+        
         # 先生成 aiff
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         aiff_path = f"output/{timestamp}_tts.aiff"
@@ -279,15 +303,14 @@ class VideoGenerator:
         output_dir = Path(aiff_path).parent
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # 使用 say 命令生成音频
-        text_file = output_dir / "tts_text.txt"
-        with open(text_file, 'w') as f:
-            f.write(text)
+        # 使用 say 命令生成音频 (使用 -v 指定语音)
+        cmd = ['say', '-v', voice, text, '-o', aiff_path]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         
-        cmd = ['say', '-f', str(text_file), '-o', aiff_path]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        text_file.unlink()
+        if result.returncode != 0:
+            # 备用：尝试默认语音
+            cmd = ['say', text, '-o', aiff_path]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
             raise RuntimeError(f"TTS 生成失败: {result.stderr}")
