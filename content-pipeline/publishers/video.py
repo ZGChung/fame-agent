@@ -921,3 +921,70 @@ if __name__ == "__main__":
             print(f"✅ 视频生成成功: {path}")
         
         asyncio.run(test())
+
+
+# ========== 视频自动化调度 ==========
+
+class VideoScheduler:
+    """视频自动调度器"""
+    
+    def __init__(self, base_dir: str = None):
+        from pathlib import Path
+        self.base_dir = Path(base_dir) if base_dir else Path(__file__).parent.parent
+        self.gen = VideoGenerator()
+    
+    def get_pending_content(self) -> list:
+        """获取待处理的content"""
+        pending = []
+        processing = self.base_dir / 'processing'
+        
+        for f in processing.glob("*.md"):
+            content = self._parse_content_file(f)
+            if content.get('status') in ['drafting', 'reviewing']:
+                pending.append(content)
+        
+        return pending
+    
+    def _parse_content_file(self, file_path: Path) -> dict:
+        """解析内容文件"""
+        content = {
+            'id': file_path.stem.split('_')[0],
+            'file': str(file_path),
+            'title': '',
+            'status': 'drafting'
+        }
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            in_frontmatter = False
+            
+            for line in lines:
+                if line.strip() == '---':
+                    in_frontmatter = not in_frontmatter
+                if in_frontmatter and line.startswith('status:'):
+                    content['status'] = line.split(':')[1].strip()
+                if not in_frontmatter and line.startswith('# '):
+                    content['title'] = line[2:].strip()
+        
+        return content
+    
+    async def process_all_pending(self) -> dict:
+        """处理所有待发布内容"""
+        pending = self.get_pending_content()
+        results = {}
+        
+        for content in pending:
+            content_id = content['id']
+            try:
+                video_path = await generate_from_content(content_id, str(self.base_dir))
+                results[content_id] = {'status': 'success', 'video': video_path}
+            except Exception as e:
+                results[content_id] = {'status': 'error', 'error': str(e)}
+        
+        return results
+
+
+def quick_generate(content_id: str, base_dir: str = None) -> str:
+    """快速生成视频（同步版本）"""
+    import asyncio
+    return asyncio.run(generate_from_content(content_id, base_dir))
