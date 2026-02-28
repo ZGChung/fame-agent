@@ -335,11 +335,86 @@ if __name__ == "__main__":
             
             result = asyncio.run(gen())
             print(f"✅ 视频生成成功: {result}")
+        
+        elif len(sys.argv) > 2 and sys.argv[2] == 'generate-with-tts':
+            # 生成带 TTS 音频的视频
+            content_id = sys.argv[3] if len(sys.argv) > 3 else None
+            
+            if not content_id:
+                print("Usage: pipeline.py video generate-with-tts <content_id>")
+                sys.exit(1)
+            
+            # 查找内容和图片
+            folders = get_folders()
+            input_folder = folders['input']
+            processing_folder = folders['processing']
+            
+            # 找图片
+            images = []
+            for ext in ['.jpg', '.jpeg', '.png']:
+                for img in input_folder.glob(f"{content_id}*{ext}"):
+                    images.append(str(img))
+            
+            if not images:
+                print(f"❌ 未找到内容 {content_id} 对应的图片")
+                sys.exit(1)
+            
+            # 找内容文件
+            content_file = None
+            for f in processing_folder.glob(f"{content_id}_*.md"):
+                content_file = f
+                break
+            
+            if not content_file:
+                print(f"❌ 未找到内容 {content_id} 对应的文本")
+                sys.exit(1)
+            
+            # 读取内容
+            with open(content_file, 'r', encoding='utf-8') as f:
+                content_text = f.read()
+            
+            # 提取标题和正文
+            title = ""
+            body = ""
+            in_frontmatter = False
+            for line in content_text.split('\n'):
+                if line.strip() == '---':
+                    in_frontmatter = not in_frontmatter
+                elif not in_frontmatter:
+                    if line.startswith('# '):
+                        title = line[2:].strip()
+                    elif line.strip():
+                        body += line + ' '
+            
+            tts_text = title + '。' + body[:300]
+            print(f"📝 TTS 文字: {tts_text[:50]}...")
+            print(f"🖼️ 使用 {len(images)} 张图片")
+            
+            async def gen_with_tts():
+                # 生成视频
+                video_path = await vg.generate_from_images(
+                    images, 
+                    f"output/{content_id}_video.mp4",
+                    duration_per_image=4.0
+                )
+                print(f"🎬 视频已生成: {video_path}")
+                
+                # 生成 TTS
+                audio_path = await vg._generate_tts(tts_text)
+                print(f"🔊 TTS 已生成: {audio_path}")
+                
+                # 合并
+                final_path = await vg.add_audio(video_path, audio_path=audio_path)
+                return final_path
+            
+            result = asyncio.run(gen_with_tts())
+            print(f"✅ 带 TTS 视频生成成功: {result}")
         else:
             print("📹 视频生成器")
             print(f"配置状态: {'✅ 已配置' if vg.is_configured() else '⚠️ 本地 ffmpeg'}")
             print("\nUsage:")
-            print("  pipeline.py video generate <content_id>  - 从图片生成视频")
+            print("  pipeline.py video generate <content_id>        - 从图片生成视频")
+            print("  pipeline.py video generate-with-tts <content_id> - 生成带 TTS 音频的视频")
     
     else:
         print(f"Unknown command: {cmd}")
