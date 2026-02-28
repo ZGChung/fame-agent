@@ -302,6 +302,29 @@ class VideoGenerator:
         if not output_path:
             output_path = video_path.replace('.mp4', '_with_music.mp4')
         
+        # 先检查视频是否有音频轨道
+        check_cmd = ['ffprobe', '-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', video_path]
+        check_result = subprocess.run(check_cmd, capture_output=True, text=True)
+        has_audio = bool(check_result.stdout.strip())
+        
+        if not has_audio:
+            # 视频没有音频，添加静音轨道
+            temp_video = video_path.replace('.mp4', '_with_silent.mp4')
+            silent_cmd = [
+                'ffmpeg', '-y',
+                '-i', video_path,
+                '-f', 'lavfi',
+                '-i', 'anullsrc=r=44100:cl=stereo',
+                '-c:v', 'copy',
+                '-c:a', 'aac',
+                '-shortest',
+                temp_video
+            ]
+            result = subprocess.run(silent_cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                raise RuntimeError(f"添加静音轨道失败: {result.stderr[:200]}")
+            video_path = temp_video
+        
         cmd = [
             'ffmpeg', '-y',
             '-i', video_path,
