@@ -240,6 +240,8 @@ class VideoGenerator:
         # 如果提供了 tts，使用 TTS 生成音频
         if tts_text and not audio_path:
             audio_path = await self._generate_tts(tts_text)
+            if not audio_path:
+                raise ValueError("TTS 生成失败")
         
         if not audio_path:
             raise ValueError("需要提供音频文件或 TTS 文字")
@@ -261,10 +263,51 @@ class VideoGenerator:
             return output_path
         raise RuntimeError(f"音频合并失败: {result.stderr}")
     
-    async def _generate_tts(self, text: str) -> str:
-        """生成 TTS 音频"""
-        # TODO: 集成 TTS 服务
-        raise NotImplementedError("TTS 集成开发中")
+    async def _generate_tts(self, text: str, output_path: str = None) -> str:
+        """生成 TTS 音频 (使用 macOS say 命令)"""
+        # 先生成 aiff
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        aiff_path = f"output/{timestamp}_tts.aiff"
+        
+        # 输出路径
+        if output_path and output_path.endswith('.mp3'):
+            mp3_path = output_path
+        else:
+            mp3_path = f"output/{timestamp}_tts.mp3"
+        
+        output_dir = Path(aiff_path).parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 使用 say 命令生成音频
+        text_file = output_dir / "tts_text.txt"
+        with open(text_file, 'w') as f:
+            f.write(text)
+        
+        cmd = ['say', '-f', str(text_file), '-o', aiff_path]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        text_file.unlink()
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"TTS 生成失败: {result.stderr}")
+        
+        # 转换格式为 MP3
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', aiff_path,
+            '-acodec', 'libmp3lame',
+            '-ar', '22050',
+            mp3_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # 删除 aiff
+        Path(aiff_path).unlink()
+        
+        if result.returncode == 0:
+            return mp3_path
+        
+        raise RuntimeError(f"MP3 转换失败: {result.stderr}")
 
 
 # 便捷函数
