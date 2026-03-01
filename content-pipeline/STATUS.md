@@ -34,14 +34,20 @@
 - [x] 小红书自动化发布模块 (`publishers/xiaohongshu.py`)
 - [x] Twitter/LinkedIn/知乎发布器框架 (`publishers/__init__.py`)
 - [x] 配置文件 (`config.json`)
+- [x] 视频生成管道 (`publishers/video.py`)
+- [x] FFmpeg 幻灯片视频生成
+- [x] Ken Burns 特效 (zoom in/out/pan)
+- [x] TTS 音频支持 (ElevenLabs + macOS say)
+- [x] 背景音乐添加
+- [x] 9:16 竖屏格式 (1080x1920)
 
 ### 进行中
-- [ ] 小红书 Cookie 登录配置
+- [ ] 小红书 Cookie 登录配置 ✅ 已完成
 - [ ] Twitter/LinkedIn API 密钥配置
-- [ ] 完善 xiaohongshu.py 发布逻辑
+- [ ] 定时发布功能
 
 ### 待完成
-- [ ] 浏览器自动化测试
+- [ ] 浏览器自动化测试（小红书）
 - [ ] 定时发布功能
 - [ ] 内容效果追踪
 
@@ -54,7 +60,9 @@
 | Twitter | ❌ | 需要 API Key |
 | LinkedIn | ❌ | 需要 Access Token |
 | 知乎 | ❌ | 需要登录 Cookie |
-| 小红书 | ⚠️ | 需要 Playwright + Cookie |
+| 小红书 | ✅ | 已配置 Cookie + Playwright |
+| 视频生成 | ✅ | FFmpeg 本地生成 |
+| TTS | ✅ | ElevenLabs API |
 
 ---
 
