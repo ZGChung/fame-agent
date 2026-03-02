@@ -1,17 +1,39 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
+## 基本信息
 
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
+- **Name**: Jayson
+- **Timezone**: Asia/Shanghai
 
-## Context
+## 项目：社交媒体自动化
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
+### 平台
+- 小红书（RedNote）- 主要平台
+- 可能扩展到其他社交媒体
 
----
+### 当前状态
+- ✅ 文本自动生成
+- ✅ 图片自动生成
+- ⏳ 视频自动生成（即将添加）
 
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+### Pipeline 结构
+- `input/` - 输入文件夹
+- `processing/` - 处理中
+- `queue/` - 待发布队列
+- `content-ideas.md` - 内容创意库
+
+### 目标
+1. 完善文本+图片自动生成
+2. 添加视频生成支持
+3. 完全自动化发布流程
+
+## 沟通
+
+- 汇报用中文
+- 直接通过 Telegram 发送
+
+## 周报
+
+- 周报保存路径：`~/Desktop/Agents/reports/YYYY-MM-DD/fame.md`
+- 日期格式：2026-03-02
+- 文件名：使用 agent 名称（fame）
