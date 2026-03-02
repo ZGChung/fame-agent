@@ -31,3 +31,9 @@
 
 - 汇报用中文
 - 直接通过 Telegram 发送
+
+## 周报
+
+- 周报保存路径：`~/Desktop/Agents/reports/YYYY-MM-DD/fame.md`
+- 日期格式：2026-03-02
+- 文件名：使用 agent 名称（fame）
