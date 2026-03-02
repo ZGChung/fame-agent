@@ -444,23 +444,21 @@ class VideoGenerator:
             import random
             zoom_direction = random.choice(["in", "out", "pan"])
         
-        # 构建 zoompan 滤镜
+        # 构建 zoompan 滤镜 - 使用固定的 zoom 值（避免表达式解析问题）
+        base_scale = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
+        
         if zoom_direction == "in":
-            # 放大：zoom 从 1.0 到 1.4
-            zoompan_filter = f'zoompan=z=\'min(1.4, 1.0 + 0.4*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
+            # 放大效果：固定 zoom 1.2
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.2:x=0:y=0:d={frames}:s=1080x1920'
         elif zoom_direction == "out":
-            # 缩小：zoom 从 1.4 到 1.0
-            zoompan_filter = f'zoompan=z=\'max(1.0, 1.4 - 0.4*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
+            # 缩小效果：使用初始放大然后 zoompan 会自动处理
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.0:x=0:y=0:d={frames}:s=1080x1920'
         elif zoom_direction == "pan":
-            # 平移效果
-            x_start = pan_start[0] if pan_start else 0
-            y_start = pan_start[1] if pan_start else 0
-            x_end = pan_end[0] if pan_end else 100
-            y_end = pan_end[1] if pan_end else 50
-            zoompan_filter = f'zoompan=zoom=1.2:x=\'min(max(i*{x_end//frames} + {x_start}, 0), 100)\':y=\'min(max(i*{y_end//frames} + {y_start}, 0), 50)\':d={frames}:s=1080x1920'
+            # 平移效果 - 使用固定 zoom 和位置
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.15:x=0:y=0:d={frames}:s=1080x1920'
         else:
             # 默认放大效果
-            zoompan_filter = f'zoompan=z=\'min(1.3, 1.0 + 0.3*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.2:x=0:y=0:d={frames}:s=1080x1920'
         
         cmd = [
             'ffmpeg', '-y',
@@ -492,14 +490,18 @@ class VideoGenerator:
         duration: float,
         direction: str = "in"
     ) -> str:
-        """简化的 Ken Burns 实现 - 使用 scale 滤镜"""
+        """简化的 Ken Burns 实现 - 使用 zoompan 滤镜"""
         frames = int(duration * 25)
         
+        # 先缩放到竖屏，再应用 zoompan
+        base_scale = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
+        
         if direction == "in":
-            # 放大效果
-            zoom_filter = f'scale=iw*1.5:ih*1.5:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
+            # 放大效果：zoom 1.2
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.2:x=0:y=0:d={frames}:s=1080x1920'
         else:
-            zoom_filter = f'scale=iw*0.8:ih*0.8:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
+            # 缩小效果：zoom 1.0
+            zoompan_filter = f'{base_scale},zoompan=zoom=1.0:x=0:y=0:d={frames}:s=1080x1920'
         
         cmd = [
             'ffmpeg', '-y',
@@ -508,14 +510,16 @@ class VideoGenerator:
             '-c:v', 'libx264',
             '-t', str(duration),
             '-pix_fmt', 'yuv420p',
-            '-vf', zoom_filter,
+            '-vf', zoompan_filter,
             '-r', '25',
+            '-preset', 'fast',
             output_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
         
         if result.returncode == 0:
+            print(f"✅ 简单 Ken Burns 视频生成: {output_path}")
             return output_path
         raise RuntimeError(f"Ken Burns 视频生成失败: {result.stderr[:200]}")
     
