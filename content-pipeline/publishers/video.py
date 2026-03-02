@@ -409,16 +409,20 @@ class VideoGenerator:
         image_path: str,
         output_path: str = None,
         duration: float = 5.0,
-        zoom_direction: str = "in"
+        zoom_direction: str = "in",
+        pan_start: tuple = None,
+        pan_end: tuple = None
     ) -> str:
         """
-        创建 Ken Burns 效果视频（自动缩放）
+        创建 Ken Burns 效果视频（动态缩放+平移）
         
         Args:
             image_path: 图片路径
             output_path: 输出路径
             duration: 视频时长
-            zoom_direction: 缩放方向 ("in", "out", "pan")
+            zoom_direction: 缩放方向 ("in", "out", "pan", "auto")
+            pan_start: 起始位置 (x, y)，如 (0, 0)
+            pan_end: 结束位置 (x, y)，如 (100, 50)
         
         Returns:
             str: 生成的视频路径
@@ -430,28 +434,33 @@ class VideoGenerator:
         output_dir = Path(output_path).parent
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # 预先计算帧数
-        frames = int(duration * 25)
+        frames = int(duration * 30)  # 30fps
         
-        # 根据缩放方向设置 zoom 值 (使用固定起始和结束值)
+        # scale 到竖屏
+        scale_filter = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
+        
+        if zoom_direction == "auto":
+            # 随机选择方向
+            import random
+            zoom_direction = random.choice(["in", "out", "pan"])
+        
+        # 构建 zoompan 滤镜
         if zoom_direction == "in":
-            # zoom 从 1.0 到 1.5
-            zoom_start, zoom_end = "1.0", "1.5"
+            # 放大：zoom 从 1.0 到 1.4
+            zoompan_filter = f'zoompan=z=\'min(1.4, 1.0 + 0.4*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
         elif zoom_direction == "out":
-            # zoom 从 1.5 到 1.0
-            zoom_start, zoom_end = "1.5", "1.0"
-        else:  # pan - 轻微移动
-            zoom_start, zoom_end = "1.0", "1.0"
-        
-        # 使用 zoompan 滤镜，固定 zoom 值，添加 pan 效果
-        scale_filter = f'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2'
-        
-        if zoom_direction == "pan":
-            # 轻微平移效果
-            zoompan_filter = f'zoompan=zoom={zoom_start}:x=if(eq(i\,0)\,0\,x+5):y=if(eq(i\,0)\,0\,y+3):d={frames}:s=1080x1920'
+            # 缩小：zoom 从 1.4 到 1.0
+            zoompan_filter = f'zoompan=z=\'max(1.0, 1.4 - 0.4*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
+        elif zoom_direction == "pan":
+            # 平移效果
+            x_start = pan_start[0] if pan_start else 0
+            y_start = pan_start[1] if pan_start else 0
+            x_end = pan_end[0] if pan_end else 100
+            y_end = pan_end[1] if pan_end else 50
+            zoompan_filter = f'zoompan=zoom=1.2:x=\'min(max(i*{x_end//frames} + {x_start}, 0), 100)\':y=\'min(max(i*{y_end//frames} + {y_start}, 0), 50)\':d={frames}:s=1080x1920'
         else:
-            # 缩放效果 - 简化版本
-            zoompan_filter = f'zoompan=zoom={zoom_start}:x=0:y=0:d={frames}:s=1080x1920'
+            # 默认放大效果
+            zoompan_filter = f'zoompan=z=\'min(1.3, 1.0 + 0.3*zoom_enable)\':x=0:y=0:d={frames}:s=1080x1920'
         
         cmd = [
             'ffmpeg', '-y',
@@ -461,15 +470,19 @@ class VideoGenerator:
             '-t', str(duration),
             '-pix_fmt', 'yuv420p',
             '-vf', f'{scale_filter},{zoompan_filter}',
-            '-r', '25',
+            '-r', '30',
+            '-preset', 'fast',
             output_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         
         if result.returncode == 0:
+            print(f"✅ Ken Burns 视频生成: {output_path}")
             return output_path
-        # 如果失败，尝试简化的 Ken Burns 实现
+        
+        print(f"⚠️ 动态效果失败，回退到静态: {result.stderr[:100]}")
+        # 回退到简化版本
         return await self._create_simple_ken_burns(image_path, output_path, duration, zoom_direction)
     
     async def _create_simple_ken_burns(
