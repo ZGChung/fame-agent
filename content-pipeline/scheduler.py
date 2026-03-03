@@ -7,6 +7,7 @@ Pipeline Scheduler - 自动化调度器
 import os
 import time
 import json
+import asyncio
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -194,6 +195,10 @@ class PipelineScheduler:
             for err in results['errors']:
                 self.log(f"  ❌ {err}")
         
+        # 如果有视频准备好，可以触发发布
+        if results['videos_generated'] > 0:
+            self.log("✅ 视频已生成，可发布到小红书")
+        
         return results
     
     def run_continuous(self, interval: int = 300):
@@ -207,6 +212,53 @@ class PipelineScheduler:
                 self.log(f"❌ Scheduler error: {e}")
             
             time.sleep(interval)
+    
+    async def publish_to_xiaohongshu(self, content_id: str, video_path: str = None) -> bool:
+        """发布内容到小红书"""
+        try:
+            from publishers.xiaohongshu import XiaohongshuPublisher
+            
+            # 读取内容
+            content_file = self.folders['processing'] / f"{content_id}.md"
+            if not content_file.exists():
+                self.log(f"❌ 内容文件不存在: {content_id}")
+                return False
+            
+            with open(content_file, 'r') as f:
+                content = f.read()
+            
+            # 提取标题和正文
+            title = content.split('\n')[0].replace('# ', '').strip()
+            body = '\n'.join(content.split('\n')[2:])  # 跳过第一行标题和---分隔符
+            
+            # 获取图片
+            images = []
+            if video_path and os.path.exists(video_path):
+                images = [video_path]
+            else:
+                cover_path = self.folders['input'] / f"{content_id}_cover.jpg"
+                if cover_path.exists():
+                    images = [str(cover_path)]
+            
+            # 发布
+            publisher = XiaohongshuPublisher()
+            await publisher.init_browser(headless=True)
+            await publisher.load_cookies()
+            
+            result = await publisher.publish(title, body, images)
+            
+            await publisher.close()
+            
+            if result:
+                self.log(f"✅ 发布成功: {content_id}")
+                return True
+            else:
+                self.log(f"❌ 发布失败: {content_id}")
+                return False
+                
+        except Exception as e:
+            self.log(f"❌ 发布错误: {e}")
+            return False
 
 
 def main():
