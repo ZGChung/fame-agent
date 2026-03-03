@@ -1,0 +1,78 @@
+[2026-03-03 12:15:47] ==================================================
+[2026-03-03 12:15:47] 🚀 Starting automated pipeline check...
+[2026-03-03 12:15:47] ✅ Generated cover for 016_long_tail
+[2026-03-03 12:15:47] ✅ Generated cover for 014_prove_yourself
+[2026-03-03 12:15:47] ✅ Generated cover for 009_programming
+[2026-03-03 12:15:47] ✅ Generated cover for 008_digital_nomad
+[2026-03-03 12:15:47] ✅ Generated cover for 007_ai_replace_jobs
+[2026-03-03 12:15:47] ✅ Generated cover for 010_two_types_companies
+[2026-03-03 12:15:47] ✅ Generated cover for 022_attention_not_scaled
+[2026-03-03 12:15:47] ✅ Generated cover for 017_big_customer
+[2026-03-03 12:15:47] ✅ Generated cover for 018_eof_pressure
+[2026-03-03 12:15:47] ✅ Generated cover for 019_skills_not_guardrails
+[2026-03-03 12:15:47] ✅ Generated cover for 021_focus_trap
+[2026-03-03 12:15:47] ✅ Generated cover for 005_attention
+[2026-03-03 12:15:47] ✅ Generated cover for 020_eval_benchmark
+[2026-03-03 12:15:47] ✅ Generated cover for 013_automation_first
+[2026-03-03 12:15:47] ✅ Generated cover for 012_two_types
+[2026-03-03 12:15:48] ✅ Generated cover for 006_agent_trap
+[2026-03-03 12:15:48] ✅ Generated cover for 015_app_dead
+[2026-03-03 12:15:48] ✅ Generated cover for 011_scaling
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:48] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:49] ❌ Video generation failed: 
+[2026-03-03 12:15:50] ❌ Video generation failed: 
+[2026-03-03 12:15:50] ❌ Video generation failed: 
+[2026-03-03 12:15:50] 📊 Results: 19 images, 0 videos
+[2026-03-03 12:15:50]   ❌ 016_long_tail: video generation failed
+[2026-03-03 12:15:50]   ❌ 014_prove_yourself: video generation failed
+[2026-03-03 12:15:50]   ❌ 009_programming: video generation failed
+[2026-03-03 12:15:50]   ❌ 008_digital_nomad: video generation failed
+[2026-03-03 12:15:50]   ❌ 007_ai_replace_jobs: video generation failed
+[2026-03-03 12:15:50]   ❌ 010_two_types_companies: video generation failed
+[2026-03-03 12:15:50]   ❌ 022_attention_not_scaled: video generation failed
+[2026-03-03 12:15:50]   ❌ 017_big_customer: video generation failed
+[2026-03-03 12:15:50]   ❌ 018_eof_pressure: video generation failed
+[2026-03-03 12:15:50]   ❌ 019_skills_not_guardrails: video generation failed
+[2026-03-03 12:15:50]   ❌ 021_focus_trap: video generation failed
+[2026-03-03 12:15:50]   ❌ 005_attention: video generation failed
+[2026-03-03 12:15:50]   ❌ 020_eval_benchmark: video generation failed
+[2026-03-03 12:15:50]   ❌ 013_automation_first: video generation failed
+[2026-03-03 12:15:50]   ❌ 012_two_types: video generation failed
+[2026-03-03 12:15:50]   ❌ 004_test: video generation failed
+[2026-03-03 12:15:50]   ❌ 006_agent_trap: video generation failed
+[2026-03-03 12:15:50]   ❌ 015_app_dead: video generation failed
+[2026-03-03 12:15:50]   ❌ 011_scaling: video generation failed
+[2026-03-03 12:16:15] ==================================================
+[2026-03-03 12:16:15] 🚀 Starting automated pipeline check...
+[2026-03-03 12:16:19] ✅ Video generated for 009_programming
+[2026-03-03 12:16:24] ✅ Video generated for 011_scaling
+[2026-03-03 12:16:28] ✅ Video generated for 014_prove_yourself
+[2026-03-03 12:16:32] ✅ Video generated for 008_digital_nomad
+[2026-03-03 12:16:36] ✅ Video generated for 016_long_tail
+[2026-03-03 12:16:40] ✅ Video generated for 013_automation_first
+[2026-03-03 12:16:44] ✅ Video generated for 019_skills_not_guardrails
+[2026-03-03 12:16:48] ✅ Video generated for 021_focus_trap
+[2026-03-03 12:16:52] ✅ Video generated for 020_eval_benchmark
+[2026-03-03 12:16:56] ✅ Video generated for 007_ai_replace_jobs
+[2026-03-03 12:17:01] ✅ Video generated for 022_attention_not_scaled
+[2026-03-03 12:17:05] ✅ Video generated for 012_two_types
+[2026-03-03 12:17:09] ✅ Video generated for 017_big_customer
+[2026-03-03 12:17:11] ✅ Video generated for 004_test
+[2026-03-03 12:17:15] ✅ Video generated for 005_attention
+[2026-03-03 12:17:19] ✅ Video generated for 015_app_dead
+[2026-03-03 12:17:23] ✅ Video generated for 006_agent_trap
