@@ -62,35 +62,88 @@ class PipelineScheduler:
                 for f in folder_path.glob("*cover.jpg")}
     
     def generate_cover_image(self, content_id: str) -> bool:
-        """使用 FFmpeg 生成封面图片"""
+        """使用 AI 生成有意义的封面图片"""
+        # 提取纯数字 ID
+        img_id = self.extract_id(content_id)
+        
+        # 检查图片是否已存在
+        output_path = self.folders['input'] / f"{content_id}_cover.jpg"
+        
+        # 读取内容生成带文字的封面
+        content_file = self.folders['processing'] / f"{content_id}.md"
+        if not content_file.exists():
+            # 尝试纯 ID 文件名
+            content_file = self.folders['processing'] / f"{img_id}.md"
+        
+        # 提取标题
+        title = "内容图片"
+        if content_file.exists():
+            try:
+                with open(content_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if line.startswith('# '):
+                        title = line[2:].strip()
+                        break
+            except:
+                pass
+        
+        # 使用带文字的封面
+        self.log(f"🎬 生成文字封面: {title[:20]}")
+        return self._generate_text_cover(content_id, title, output_path)
+    
+    def _generate_text_cover(self, content_id: str, title: str, output_path: Path) -> bool:
+        """生成带中文标题的图片封面"""
+        # 清理标题
+        clean_title = title.replace("'", "").replace('"', '')[:50]
+        
+        # 使用系统中文字体
+        font_path = "/System/Library/Fonts/PingFang.ttc"
+        
+        cmd = [
+            'ffmpeg', '-y',
+            '-f', 'lavfi', '-i', 'color=c=#1a1a2e:s=1080x1920:d=1',
+            '-vf', f"drawtext=text='{clean_title}':fontcolor=white:fontsize=60:fontfile={font_path}:x=(w-text_w)/2:y=(h-text_h)/2-100,drawtext=text='AI 观点':fontcolor=#666666:fontsize=40:fontfile={font_path}:x=(w-text_w)/2:y=(h-text_h)/2+80",
+            '-frames:v', '1',
+            str(output_path)
+        ]
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=30)
+            if result.returncode == 0:
+                self.log(f"✅ 文字封面生成: {content_id}")
+                return True
+            else:
+                self.log(f"⚠️ 文字封面失败，尝试简化...")
+                # 简化版本
+                return self._generate_fallback_cover(content_id, output_path)
+        except Exception as e:
+            return self._generate_fallback_cover(content_id, output_path)
+    
+    def _generate_fallback_cover(self, content_id: str, output_path: Path) -> bool:
+        """生成简单的彩色背景"""
         colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a',
                   '#a8edea', '#ff9a9e', '#ffecd2', '#c471f5', '#30cfd0']
         
-        # 从 content_id 提取数字
         try:
-            idx = int(content_id.replace('00', '').replace('_', '')) % len(colors)
+            idx = int(content_id.replace('00', '').replace('_', '').strip() or '0') % len(colors)
         except:
             idx = 0
         
         color = colors[idx]
-        output_path = self.folders['input'] / f"{content_id}_cover.jpg"
         
-        if output_path.exists():
-            return True
-        
-        # 使用 FFmpeg 生成纯色图片
         cmd = [
             'ffmpeg', '-y',
             '-f', 'lavfi', '-i', f'color=c={color}:s=1080x1920:d=1',
-            '-frames:v', '1', str(output_path)
+            '-frames:v', '1',
+            str(output_path)
         ]
         
         try:
             subprocess.run(cmd, capture_output=True, timeout=10)
-            self.log(f"✅ Generated cover for {content_id}")
             return True
-        except Exception as e:
-            self.log(f"❌ Failed to generate cover for {content_id}: {e}")
+        except:
             return False
     
     def extract_id(self, content_id: str) -> str:

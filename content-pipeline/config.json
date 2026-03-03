@@ -95,5 +95,13 @@
     "scheduled",
     "published",
     "archived"
-  ]
+  ],
+  "openai": {
+    "api_key": "",
+    "note": "用于 DALL-E 图片生成，留空则使用环境变量 OPENAI_API_KEY"
+  },
+  "image_generation": {
+    "default_style": "modern",
+    "size": "1024x1024"
+  }
 }
