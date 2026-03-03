@@ -29,7 +29,7 @@
 
 ## 🚧 开发进度
 
-### 已完成
+### 已完成 (2026-03-03)
 - [x] Pipeline 核心架构 (`pipeline.py`)
 - [x] 小红书自动化发布模块 (`publishers/xiaohongshu.py`)
 - [x] Twitter/LinkedIn/知乎发布器框架 (`publishers/__init__.py`)
@@ -40,16 +40,18 @@
 - [x] TTS 音频支持 (ElevenLabs + macOS say)
 - [x] 背景音乐添加
 - [x] 9:16 竖屏格式 (1080x1920)
+- [x] 小红书 Cookie 登录配置 ✅
+- [x] Playwright 浏览器自动化集成
 
 ### 进行中
-- [ ] 小红书 Cookie 登录配置 ✅ 已完成
 - [ ] Twitter/LinkedIn API 密钥配置
-- [ ] 定时发布功能
+- [ ] 定时发布功能 (scheduler.py)
+- [ ] 内容效果追踪
 
 ### 待完成
-- [ ] 浏览器自动化测试（小红书）
 - [ ] 定时发布功能
-- [ ] 内容效果追踪
+- [ ] 内容效果追踪（阅读量/点赞数）
+- [ ] 更多平台支持
 
 ---
 
@@ -57,9 +59,9 @@
 
 | 平台 | 状态 | 说明 |
 |------|------|------|
-| Twitter | ❌ | 需要 API Key |
-| LinkedIn | ❌ | 需要 Access Token |
-| 知乎 | ❌ | 需要登录 Cookie |
+| Twitter | ⚠️ | 需要 API Key |
+| LinkedIn | ⚠️ | 需要 Access Token |
+| 知乎 | ⚠️ | 需要登录 Cookie |
 | 小红书 | ✅ | 已配置 Cookie + Playwright |
 | 视频生成 | ✅ | FFmpeg 本地生成 |
 | TTS | ✅ | ElevenLabs API |
@@ -73,11 +75,29 @@ content-pipeline/
 ├── config.json          # 配置文件
 ├── pipeline.py          # 核心模块
 ├── STATUS.md            # 状态追踪
+├── scheduler.py         # 定时任务调度
 ├── input/               # 输入文件夹 (新想法)
-├── processing/          # 处理中文件夹
+├── processing/         # 处理中文件夹
 ├── output/              # 已完成内容
 ├── queue/               # 待发布队列
 └── publishers/          # 各平台发布器
     ├── __init__.py      # Twitter/LinkedIn/知乎
-    └── xiaohongshu.py   # 小红书 (浏览器自动化)
+    ├── xiaohongshu.py   # 小红书 (浏览器自动化)
+    ├── video.py         # 视频生成
+    ├── image_generator.py # 图片生成
+    └── cookies/         # 登录 Cookie
+        └── xiaohongshu.json
 ```
+
+---
+
+## 📝 开发备注
+
+### 小红书发布方案
+- **方案**: Playwright 浏览器自动化
+- **优点**: 无需官方 API，使用真实浏览器登录
+- **流程**: Cookie 登录 → 打开发布页 → 上传图片 → 填写标题/正文 → 发布
+
+### 定时发布
+- 使用 scheduler.py 实现 cron 定时任务
+- 支持多平台定时发布
