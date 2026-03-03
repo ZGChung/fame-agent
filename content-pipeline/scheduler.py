@@ -94,17 +94,18 @@ class PipelineScheduler:
         return self._generate_text_cover(content_id, title, output_path)
     
     def _generate_text_cover(self, content_id: str, title: str, output_path: Path) -> bool:
-        """生成带中文标题的图片封面"""
-        # 清理标题
-        clean_title = title.replace("'", "").replace('"', '')[:50]
+        """生成带标题的图片封面（英文/数字标题）"""
+        # 清理标题，只保留 ASCII 字符
+        import re
+        clean_title = re.sub(r'[^\x00-\x7F]+', '', title)[:30]
+        if not clean_title:
+            clean_title = f"#{content_id}"
         
-        # 使用系统中文字体
-        font_path = "/System/Library/Fonts/PingFang.ttc"
-        
+        # 使用默认字体（不指定中文字体）
         cmd = [
             'ffmpeg', '-y',
             '-f', 'lavfi', '-i', 'color=c=#1a1a2e:s=1080x1920:d=1',
-            '-vf', f"drawtext=text='{clean_title}':fontcolor=white:fontsize=60:fontfile={font_path}:x=(w-text_w)/2:y=(h-text_h)/2-100,drawtext=text='AI 观点':fontcolor=#666666:fontsize=40:fontfile={font_path}:x=(w-text_w)/2:y=(h-text_h)/2+80",
+            '-vf', f"drawtext=text='{clean_title}':fontcolor=white:fontsize=50:x=(w-text_w)/2:y=(h-text_h)/2",
             '-frames:v', '1',
             str(output_path)
         ]
@@ -115,27 +116,55 @@ class PipelineScheduler:
                 self.log(f"✅ 文字封面生成: {content_id}")
                 return True
             else:
-                self.log(f"⚠️ 文字封面失败，尝试简化...")
-                # 简化版本
+                self.log(f"⚠️ 文字封面失败，尝试渐变...")
                 return self._generate_fallback_cover(content_id, output_path)
         except Exception as e:
             return self._generate_fallback_cover(content_id, output_path)
     
     def _generate_fallback_cover(self, content_id: str, output_path: Path) -> bool:
-        """生成简单的彩色背景"""
-        colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a',
-                  '#a8edea', '#ff9a9e', '#ffecd2', '#c471f5', '#30cfd0']
+        """生成带渐变效果的彩色背景封面"""
+        # 渐变色彩方案
+        gradients = [
+            'linear_gradient=#667eea:#764ba2',  # 紫蓝渐变
+            'linear_gradient=#f093fb:#f5576c',  # 粉红渐变
+            'linear_gradient=#4facfe:#00f2fe',  # 蓝色渐变
+            'linear_gradient=#43e97b:#38f9d7',  # 绿色渐变
+            'linear_gradient=#fa709a:#fee140',  # 红黄渐变
+            'linear_gradient=#a8edea:#fed6e3',  # 浅绿粉渐变
+            'linear_gradient=#ff9a9e:#fecfef',  # 粉色渐变
+            'linear_gradient=#ffecd2:#fcb69f',  # 橙黄渐变
+            'linear_gradient=#c471f5:#fa71cd',  # 紫色渐变
+            'linear_gradient=#30cfd0:#330867',  # 青紫渐变
+        ]
         
         try:
-            idx = int(content_id.replace('00', '').replace('_', '').strip() or '0') % len(colors)
+            idx = int(content_id.replace('00', '').replace('_', '').strip() or '0') % len(gradients)
         except:
             idx = 0
         
-        color = colors[idx]
+        gradient = gradients[idx]
         
+        # 使用 FFmpeg 渐变生成（简化版：纯色 + 暗角效果）
         cmd = [
             'ffmpeg', '-y',
-            '-f', 'lavfi', '-i', f'color=c={color}:s=1080x1920:d=1',
+            '-f', 'lavfi', '-i', f'color=c=#1a1a2e:s=1080x1920:d=1',
+            '-vf', 'vignette=angle=0.5',
+            '-frames:v', '1',
+            str(output_path)
+        ]
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            if result.returncode == 0:
+                self.log(f"✅ 渐变封面生成: {content_id}")
+                return True
+        except:
+            pass
+        
+        # 最简备选：纯色
+        cmd = [
+            'ffmpeg', '-y',
+            '-f', 'lavfi', '-i', 'color=c=#2d3436:s=1080x1920:d=1',
             '-frames:v', '1',
             str(output_path)
         ]
