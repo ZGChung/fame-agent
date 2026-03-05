@@ -732,8 +732,11 @@ class VideoGenerator:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         
-        # 删除 aiff
-        Path(aiff_path).unlink()
+        # 删除 aiff (如果存在)
+        try:
+            Path(aiff_path).unlink(missing_ok=True)
+        except Exception:
+            pass
         
         if result.returncode == 0:
             return mp3_path
