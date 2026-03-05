@@ -43,15 +43,27 @@
 - [x] 小红书 Cookie 登录配置 ✅
 - [x] Playwright 浏览器自动化集成
 
-### 进行中
-- [ ] Twitter/LinkedIn API 密钥配置
-- [ ] 定时发布功能 (scheduler.py)
-- [ ] 内容效果追踪
+### 已完成 (2026-03-04)
+- [x] Pipeline 核心架构 (`pipeline.py`)
+- [x] 小红书自动化发布模块 (`publishers/xiaohongshu.py`)
+- [x] Twitter/LinkedIn/知乎发布器框架 (`publishers/__init__.py`)
+- [x] 配置文件 (`config.json`)
+- [x] 视频生成管道 (`publishers/video.py`)
+- [x] FFmpeg 幻灯片视频生成
+- [x] Ken Burns 特效 (zoom in/out/pan)
+- [x] TTS 音频支持 (ElevenLabs + macOS say)
+- [x] 背景音乐添加
+- [x] 9:16 竖屏格式 (1080x1920)
+- [x] 小红书 Cookie 登录配置 ✅
+- [x] Playwright 浏览器自动化集成
+- [x] **Scheduler 定时调度器** ✅ 运行中
+- [x] **图片自动生成** ✅ (20+ 封面)
+- [x] **视频自动生成** ✅ (15+ 视频)
 
-### 待完成
-- [ ] 定时发布功能
-- [ ] 内容效果追踪（阅读量/点赞数）
-- [ ] 更多平台支持
+### 进行中 (2026-03-04)
+- [ ] Twitter/LinkedIn API 密钥配置
+- [ ] 小红书自动发布测试
+- [ ] 内容效果追踪
 
 ---
 
