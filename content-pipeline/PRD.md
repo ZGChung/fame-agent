@@ -1,6 +1,6 @@
 # Content Pipeline — Product Requirements Document (PRD)
 
-**版本**: v0.3
+**版本**: v0.4
 **日期**: 2026-05-16
 **作者**: Fame Agent (on behalf of Jayson)
 
@@ -39,34 +39,44 @@ Content Pipeline 是一个全自动、多平台、多模态的社交媒体内容
 ### 3.1 整体流程
 
 ```
+                         ┌───────────────────┐
+                         │   Curator Agent    │  ← 自动监测信息源、筛选爆款 idea
+                         │  选题策展 Agent    │
+                         └─────────┬─────────┘
+                                   │ 自动产生 idea
+                                   ▼
 ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
 │  Ingestion │ → │ Processing│ → │  Review  │ → │Scheduling│ → │Publishing│
 │  内容摄入  │    │  内容处理  │    │ AI 审核  │    │  调度    │    │  发布    │
 └──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
-      │               │               │               │               │
-      ▼               ▼               ▼               ▼               ▼
+      ▲               │               │               │               │
+      │               ▼               ▼               ▼               ▼
   输入源:        每阶段:         AI 审核        定时队列:       目标平台:
   · 手动写作     · 平台适配      · 事实核查     · 指定时间      小红书
   · AI生成       · 媒体生成      · 质量评分     · 自动排期      Bilibili
-  · 播客转写     · 多语言翻译    · 风格检查                          LinkedIn
+  · 策展 Agent   · 多语言翻译    · 风格检查                          LinkedIn
   · API输入      · SEO优化       · 平台适配校验                      Twitter
                                                                    TikTok
                                                                    YouTube
                                                                    Threads
 
-                                      ┌──────────────────────────────────┐
-                                      │                                  │
-                                      ▼                                  │
-                              ┌──────────────┐                          │
-                              │  Analytics    │  ← 发布后 N 天收集数据    │
-                              │  效果分析     │    点赞/收藏/转发/评论    │
-                              └──────┬───────┘                          │
-                                     │ 学习 → 更新审核标准               │
-                                     ▼                                  │
-                              ┌──────────────┐                          │
-                              │  Criteria    │  → AI 审核读取最新标准     │
-                              │  审核标准库   │    (可编辑 Markdown 文件)  │
-                              └──────────────┘──────────────────────────┘
+                                      ┌───────────────────────────────────────┐
+                                      │                                       │
+                                      ▼                                       │
+                              ┌──────────────┐                               │
+                              │  Analytics    │  ← 发布后 N 天收集数据        │
+                              │  效果分析     │    点赞/收藏/转发/评论        │
+                              └──────┬───────┘                               │
+                                     │ 学习 → 更新审核标准                   │
+                                     ▼                                       │
+                              ┌──────────────┐                               │
+                              │  Criteria    │  → AI 审核读取最新标准        │
+                              │  审核标准库   │     (可编辑 Markdown 文件)    │
+                              │              │                               │
+                              │  Objectives  │  → 各平台优化目标也可更新      │
+                              │  优化目标库   │     同样受 feedback 驱动      │
+                              └──────────────┘───────────────────────────────┘
+```
 ```
 
 ### 3.2 模块依赖关系
@@ -112,15 +122,93 @@ Content Pipeline 是一个全自动、多平台、多模态的社交媒体内容
 
 ### 4.1 Ingestion（内容摄入）
 
-内容进入管道的所有入口：
+#### 4.1.1 输入源
 
-| 方式 | 说明 | 自动化程度 |
-|------|------|-----------|
-| 手动 Markdown | 直接写文件到 content/input/ | 手动 |
-| AI 草稿生成 | LLM 根据选题生成初稿 | 全自动 |
-| 语音转写 | 播客/口述 → 文字 → 内容 | 半自动 |
-| API 导入 | 从 Notion/Obsidian 等同步 | 全自动 |
-| RSS/News | 自动化搜集素材 → 选题建议 | 全自动 |
+内容进入管道的所有入口，分为**被动输入**（Jayson 手动）和**主动发现**（系统自动）：
+
+| 方式 | 说明 | 自动化程度 | 阶段 |
+|------|------|-----------|------|
+| 手动 Markdown | 直接写文件到 content/input/ | 手动 | 当前 |
+| AI 草稿生成 | LLM 根据选题生成初稿 | 全自动 | 当前 |
+| 策展 Agent 自动发现 | 自动监测信息源、筛选爆款 idea | 全自动 | 未来 |
+| API 导入 | 从 Notion/Obsidian 等同步 | 全自动 | 未来 |
+| RSS/News | 自动化搜集素材 → 选题建议 | 全自动 | 未来 |
+
+#### 4.1.2 策展 Agent（Curator Agent）{#curator-agent}
+
+Pipeline 发展到最终形态后，**不需要 Jayson 手动输入新的 idea**。
+Curator Agent 自动完成"发现 → 筛选 → 触发生产"的全流程：
+
+```
+信息源（博主/大V/RSS/订阅） → Curator Agent 持续监测
+                                      ↓
+                              对每条内容打分：
+                              · 爆款潜力
+                              · 与品牌/主题的相关性
+                              · 新颖度（是否与已发布内容重复）
+                                      ↓
+                              筛选出 Top N 的 idea
+                                      ↓
+                              自动触发 Pipeline 生产内容
+```
+
+**信息源配置：**
+
+```yaml
+curation:
+  enabled: true
+  interval: "1h"                          # 检查频率
+  max_ideas_per_run: 3                    # 每次最多产生几个 idea
+  
+  sources:
+    - type: "rss"
+      url: "https://example.com/feed.xml"
+      name: "AI 行业周报"
+      weight: 1.0
+    - type: "xiaohongshu_influencer"
+      user_id: "xxx"
+      name: "某小红书博主"
+      weight: 0.8
+    - type: "twitter_account"
+      handle: "some_handle"
+      name: "某 Twitter KOL"
+      weight: 0.8
+    - type: "newsletter"
+      url: "https://..."
+      name: "某 Newsletter"
+      
+  scoring:
+    model: "gpt-4o"
+    dimensions:
+      viral_potential:      0.4    # 爆款潜力（权重）
+      relevance:            0.3    # 与品牌/主题相关性
+      novelty:              0.2    # 新颖度（避免重复）
+      timeliness:           0.1    # 时效性
+```
+
+**爆款潜力评分标准（也存储在 criteria/ 中，可编辑可自动更新）：**
+
+```markdown
+# criteria/viral_scoring.md — 爆款潜力评分标准
+
+## 高爆款信号
+- 引发争议或对立观点
+- 包含"首次""最新""独家"等稀缺性标记
+- 数据/研究结果出人意料
+- 个人经历 + 深刻见解的结合
+- 回答一个广泛存在的痛点问题
+
+## 低爆款信号
+- 已经被广泛报道的新闻
+- 过于技术化、受众狭窄
+- 没有新的观点或角度
+- 纯粹的转发/汇总
+```
+
+**Curator Agent 的筛选标准同样受 feedback 影响：**
+- 如果一个来源持续推荐的 idea 发布后表现好 → 该来源权重增加
+- 如果一个来源推荐的 idea 经常表现差 → 该来源权重降低或暂停
+- 爆款信号的新模式出现 → 自动更新 `criteria/viral_scoring.md`
 
 ### 4.2 Processing（内容处理）
 
@@ -525,6 +613,144 @@ Jayson 在任何时候都可以：
 - **回滚**：`git checkout -- criteria/xiaohongshu.md`
 - **手动添加标准**：直接编辑 `criteria/*.md`，AI 下次读取即生效
 
+### 4.8 各平台优化目标（Platform Optimization Objectives）{#objectives}
+
+每个平台可以独立定义自己的优化目标，这个目标既是 AI 审核的参考标准之一，
+也是效果反馈回路最终要优化的方向。
+
+#### 4.8.1 目标定义
+
+优化目标 = 一个可计算的公式 + 方向（最大化或最小化）：
+
+```
+小红书:  maximize( likes + saves )
+        点赞 + 收藏 → 既有传播力又有实用价值
+      ↓
+Bilibili: maximize( likes + coins + shares )
+        点赞 + 投币 + 转发 → B 站特色互动指标
+      ↓
+LinkedIn: maximize( likes + comments * 2 )
+        评论权重翻倍 → LinkedIn 更看重专业讨论
+      ↓
+Twitter:  maximize( retweets + likes )
+        转发 + 点赞 → 传播广度
+      ↓
+TikTok:   maximize( shares + completion_rate )
+        转发 + 完播率 → 内容吸引力和传播力
+```
+
+#### 4.8.2 配置方式
+
+优化目标写在配置文件中，**初始值由人工硬编码，后续可被 feedback loop 自动更新**：
+
+```yaml
+platforms:
+  xiaohongshu:
+    optimization:
+      formula: "likes + saves"           # 当前优化目标
+      direction: "maximize"               # 优化方向
+      last_updated: "2026-05-16"          # 最后更新时间
+      updated_by: "manual"                # manual / auto
+      history:                            # 变更历史
+        - formula: "likes"
+          period: "2026-04-01_to_2026-05-01"
+          reason: "初始值"
+        - formula: "likes + saves"
+          period: "2026-05-01_to_now"
+          reason: "发现收藏数更能反映内容实用性"
+
+  bilibili:
+    optimization:
+      formula: "likes + coins + shares"
+      direction: "maximize"
+
+  linkedin:
+    optimization:
+      formula: "likes + comments * 2"
+      direction: "maximize"
+```
+
+#### 4.8.3 目标与审核 Agent 的关系
+
+```
+优化目标 → 驱动审核标准 → 决定内容修改建议 → 影响发布内容 → 观众反馈
+                                                              ↓
+                                                        收集数据
+                                                              ↓
+                                                        计算目标值
+                                                              ↓
+                                                   优化目标达成度分析
+                                                              ↓
+                                             是否需要调整审核标准或目标本身？
+```
+
+**具体影响链路：**
+
+1. AI 审核 Agent 读取当前平台的优化目标
+2. 审核时不仅打分，还会给出"这篇内容是否有助于达成优化目标"的评价
+3. 对于同一篇原文，针对不同平台的审核 Agent 可能产出不同的修改建议
+4. 如果某类内容持续对优化目标贡献大 → 审核标准自动偏向该类内容
+
+#### 4.8.4 目标本身的自动更新
+
+优化目标也可以被 feedback loop 自动调整。例如：
+
+```
+系统发现：
+  · 近 30 天，点赞数持续增长但收藏数停滞
+  · 进一步分析：干货内容被限流，短平快内容数据好
+  · 判断：当前内容方向可能偏离"实用价值"定位
+
+自动建议：
+  是否需要将优化公式从 "likes + saves" 调整为 "saves * 1.5 + likes"？
+  因为收藏更能体现"有用性"这个核心价值主张。
+
+决策：
+  - auto 模式下：如果置信度高，系统自动执行调整
+  - review_auto 模式下：通知 Jayson 确认
+  - 任何模式下：Jayson 可以手动覆盖
+```
+
+#### 4.8.5 目标存储
+
+和目标相关的元数据存储在 `criteria/objectives/` 目录中：
+
+```
+criteria/
+├── objectives/
+│   ├── xiaohongshu.md        # 小红书当前优化目标 + 变更历史
+│   ├── bilibili.md
+│   ├── linkedin.md
+│   └── ...
+```
+
+**文件示例（`criteria/objectives/xiaohongshu.md`）：**
+
+```markdown
+# 小红书优化目标
+
+## 当前目标
+```
+公式: likes + saves
+方向: maximize
+更新: 2026-05-16 (manual)
+建议: 点赞体现传播力，收藏体现实用价值，二者之和综合衡量内容质量
+```
+
+## 历史变更
+| 时间 | 公式 | 原因 | 来源 |
+|------|------|------|------|
+| 2026-04-01 | likes | 初始值 | manual |
+| 2026-05-16 | likes + saves | 发现收藏>点赞=0.7，调整 | auto |
+
+## 当前达成情况（自动更新）
+<!-- 以下由系统自动写入 -->
+- 近 7 天均值: likes=187, saves=94, total=281
+- 近 30 天均值: likes=245, saves=89, total=334
+- 趋势: likes ↑15%, saves ↑3%
+- 目标达成度: 78% (基于历史最佳)
+```
+
 ---
 
 ## 5. 平台支持矩阵
@@ -698,6 +924,10 @@ auto_level_selection:
 | `pipeline insights` | 查看效果洞察报告 | ❌ |
 | `pipeline criteria list` | 列出审核标准文件 | ❌ |
 | `pipeline criteria edit <platform>` | 编辑指定平台审核标准 | ❌ |
+| `pipeline objectives list` | 查看各平台优化目标 | ❌ |
+| `pipeline objectives update <platform>` | 更新某平台优化目标 | ❌ |
+| `pipeline curator sources` | 查看信息源状态和权重 | ❌ |
+| `pipeline curator run` | 手动触发一次选题策展 | ❌ |
 | `pipeline log` | 查看日志 | ❌ |
 
 ---
@@ -714,6 +944,7 @@ auto_level_selection:
 - GitHub Actions CI/CD
 - AI Review Panel 实现（AI 伪人工审核）
 - 可编辑的审核标准文件系统（criteria/）
+- 各平台优化目标系统（objectives/）
 - Bilibili 发布器
 - LinkedIn 发布器
 - Twitter 发布器
@@ -725,12 +956,18 @@ auto_level_selection:
   - 发布后数据收集器（各平台 API）
   - 分析引擎（Insight Engine）
   - 标准更新器（Criteria Updater）
+  - 优化目标自动更新
 - TikTok 发布器
 - YouTube 发布器
 - Seedance 2.0 视频 API 集成
 - 图片自动生成 + 发布集成
 
 ### Phase 4
+- Curator Agent（自动选题策展）
+  - 信息源配置框架
+  - 爆款潜力评分引擎
+  - 来源权重自适应
+  - 自动触发 Pipeline
 - Threads 发布器
 - Analytics / 效果追踪
 - 内容模板库
@@ -773,6 +1010,7 @@ content-pipeline/
 │   ├── pipeline.py            # 流程编排 + ContentStore
 │   ├── stages.py              # 处理阶段
 │   ├── reviewer.py            # AI 审核引擎
+│   ├── curator.py             # 选题策展引擎（Curator Agent）
 │   ├── analyzer.py            # 效果分析引擎
 │   ├── criteria_updater.py    # 审核标准自动更新器
 │   ├── cli.py                 # CLI
@@ -795,8 +1033,11 @@ content-pipeline/
 │   ├── bilibili.md
 │   ├── linkedin.md
 │   ├── twitter.md
-│   └── metrics/               # 历史指标（系统自动写入）
-│       ├── xiaohongshu_performance.md
+│   ├── viral_scoring.md       # 爆款潜力评分标准（Curator Agent 使用）
+│   └── objectives/            # 各平台优化目标
+│       ├── xiaohongshu.md
+│       ├── bilibili.md
+│       ├── linkedin.md
 │       └── ...
 ├── tests/                     # 测试
 ├── content/                   # 内容存储
