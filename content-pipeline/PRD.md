@@ -1,8 +1,9 @@
 # Content Pipeline — Product Requirements Document (PRD)
 
-**版本**: v0.4
+**版本**: v1.0 FINAL（锁版）
 **日期**: 2026-05-16
 **作者**: Fame Agent (on behalf of Jayson)
+**状态**: ✅ 已确认，所有后续开发以此文档为准
 
 ---
 
