@@ -1,0 +1,19 @@
+{
+  "queue": [
+    {
+      "id": "1",
+      "content_id": "001",
+      "platform": "xiaohongshu",
+      "scheduled_at": "2020-01-01T00:00:00",
+      "priority": 0,
+      "created_at": "2026-05-17T12:26:43.051673",
+      "retry_count": 0,
+      "max_retries": 3,
+      "last_attempt_at": "2026-05-17T12:26:43.052095",
+      "last_error": "No publisher registered for xiaohongshu",
+      "status": "failed"
+    }
+  ],
+  "platform_counters": {},
+  "version": "1.0"
+}

@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from . import Content, ContentStatus, Platform, Pipeline
@@ -92,6 +93,24 @@ def main():
     # --- run ---
     sub.add_parser("run", help="运行一次自动化处理")
 
+    # --- schedule ---
+    sched_p = sub.add_parser("schedule", help="发布队列调度")
+    sched_sub = sched_p.add_subparsers(dest="sched_command")
+
+    sched_list_p = sched_sub.add_parser("list", help="查看发布队列")
+    sched_list_p.add_argument("--days", "-d", type=int, default=7, help="未来 N 天 (默认 7)")
+
+    sched_add_p = sched_sub.add_parser("add", help="加入发布队列")
+    sched_add_p.add_argument("content_id", help="内容 ID")
+    sched_add_p.add_argument("--at", default=None, help="计划发布时间 (YYYY-MM-DD HH:MM)")
+    sched_add_p.add_argument("--priority", "-p", type=int, default=0, help="优先级 (0=普通, 越大越优先)")
+    sched_add_p.add_argument("--platform", default=None, help="指定平台 (默认使用内容配置的所有平台)")
+
+    sched_run_p = sched_sub.add_parser("run", help="处理到期队列项")
+    sched_run_p.add_argument("--dry-run", action="store_true", help="预览模式，不实际发布")
+
+    sched_stats_p = sched_sub.add_parser("stats", help="平台频率统计")
+
     args = parser.parse_args()
     setup_logging(args.verbose if hasattr(args, "verbose") else False)
 
@@ -133,6 +152,9 @@ def _dispatch(args):
 
     elif args.command == "run":
         _cmd_run()
+
+    elif args.command == "schedule":
+        _cmd_schedule(args)
 
 
 # --- 命令实现 ---
@@ -297,6 +319,108 @@ def _cmd_run():
     print(f"\n🔄 Pipeline run complete")
     print(json.dumps(results, indent=2, ensure_ascii=False))
     print()
+
+
+def _cmd_schedule(args):
+    """调度命令分派"""
+    from .scheduler import PipelineScheduler
+
+    config = PipelineConfig.load()
+    pipeline = Pipeline(config)
+    registry = create_default_registry()
+    for name, pub in registry.all().items():
+        pipeline.register_publisher(name, pub)
+    scheduler = PipelineScheduler(config=config, pipeline=pipeline, registry=registry)
+    scheduler.load_state()
+
+    if args.sched_command == "list":
+        days = getattr(args, "days", 7)
+        upcoming = scheduler.upcoming_schedule(days=days)
+        all_items = scheduler.list_queue()
+        print(f"\n📅 发布队列 (未来 {days} 天) — 共 {len(upcoming)} 条待发布，队列共 {len(all_items)} 条:\n")
+        if upcoming:
+            for item in upcoming:
+                icon = {"pending": "⏳", "processing": "🔄", "completed": "✅", "failed": "❌"}.get(item.status, "❓")
+                p_label = "🔥" if item.priority >= 10 else ("⭐" if item.priority >= 5 else "  ")
+                print(f"  {icon} {p_label} [{item.id}] {item.content_id} → {item.platform}")
+                print(f"        ⏰ {item.scheduled_at}  |  重试 {item.retry_count}/{item.max_retries}")
+                if item.last_error:
+                    print(f"        ❌ {item.last_error}")
+                print()
+        else:
+            print("  (空)\n")
+        print()
+
+    elif args.sched_command == "add":
+        scheduled_at = None
+        if args.at:
+            try:
+                dt = datetime.strptime(args.at, "%Y-%m-%d %H:%M")
+                scheduled_at = dt.isoformat()
+            except ValueError:
+                print(f"\n❌ 日期格式错误: {args.at}")
+                print("   请使用格式: YYYY-MM-DD HH:MM (例如 2026-06-01 09:00)\n")
+                return
+
+        item = scheduler.enqueue(
+            content_id=args.content_id,
+            scheduled_at=scheduled_at,
+            priority=args.priority,
+            platform=args.platform,
+        )
+        if item:
+            print(f"\n✅ 已加入队列: [{item.id}] {item.content_id} → {item.platform}")
+            if scheduled_at:
+                print(f"   ⏰ 计划时间: {scheduled_at}")
+            if item.priority:
+                print(f"   🔥 优先级: {item.priority}")
+            print()
+        else:
+            print(f"\n❌ 加入队列失败: 内容 '{args.content_id}' 不存在或已在队列中\n")
+
+    elif args.sched_command == "run":
+        dry_run = getattr(args, "dry_run", False)
+        if dry_run:
+            print("\n🔍 预览模式 (dr run) — 不会实际发布\n")
+
+        result = scheduler.process_queue(dry_run=dry_run)
+
+        print(f"\n📤 队列处理结果:\n")
+        if result["published"]:
+            print(f"  ✅ 已发布 ({len(result['published'])} 条):")
+            for r in result["published"]:
+                url = f" → {r.get('url')}" if r.get("url") else ""
+                print(f"      {r['content_id']} → {r['platform']}{url}")
+        if result["retried"]:
+            print(f"  🔄 重试成功 ({len(result['retried'])} 条):")
+            for r in result["retried"]:
+                url = f" → {r.get('url')}" if r.get("url") else ""
+                print(f"      {r['content_id']} → {r['platform']}{url}")
+        if result["rate_limited"]:
+            print(f"  🚫 频率限制 ({len(result['rate_limited'])} 条):")
+            for r in result["rate_limited"]:
+                print(f"      {r['content_id']} → {r['platform']} ({r['reason']})")
+        if result["failed"]:
+            print(f"  ❌ 失败 ({len(result['failed'])} 条):")
+            for r in result["failed"]:
+                retry_info = f" [重试 {r.get('retry_count', '?')}]" if r.get("will_retry") else " [已达最大重试]"
+                print(f"      {r['content_id']} → {r['platform']}: {r['error']}{retry_info}")
+        if not any(result.values()):
+            print("  (没有需要处理的项)\n")
+        print()
+
+    elif args.sched_command == "stats":
+        stats = scheduler.get_platform_stats()
+        print(f"\n📊 平台频率统计:\n")
+        for platform, s in stats.items():
+            day_pct = f"{s['daily_used']}/{s['daily_limit']}" if s['daily_limit'] else "∞"
+            week_pct = f"{s['weekly_used']}/{s['weekly_limit']}" if s['weekly_limit'] else "∞"
+            print(f"  {'📕' if platform == 'xiaohongshu' else '🐦' if platform == 'twitter' else '💼' if platform == 'linkedin' else '📄'} {platform}")
+            print(f"      今日: {day_pct}  |  本周: {week_pct}")
+        print()
+
+    else:
+        print("Usage: pipeline schedule {list,add,run,stats} ...")
 
 
 if __name__ == "__main__":
