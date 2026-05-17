@@ -5,16 +5,17 @@ Content Pipeline — 各平台发布器注册
 """
 
 from .base import BasePublisher, PublisherRegistry
+from .bilibili import BilibiliPublisher
+from .linkedin import LinkedInPublisher
+from .twitter import TwitterPublisher
 from .xiaohongshu import XiaohongshuPublisher
-
-# 未来添加的平台在这里注册（完全解耦，互不影响）
-# from .twitter import TwitterPublisher
-# from .linkedin import LinkedInPublisher
-# from .zhihu import ZhihuPublisher
 
 __all__ = [
     "BasePublisher",
     "PublisherRegistry",
+    "BilibiliPublisher",
+    "LinkedInPublisher",
+    "TwitterPublisher",
     "XiaohongshuPublisher",
 ]
 
@@ -23,13 +24,24 @@ def create_default_registry() -> PublisherRegistry:
     """创建默认发布器注册表，包含所有配置好的发布器"""
     registry = PublisherRegistry()
 
+    # B站
+    bilibili = BilibiliPublisher()
+    if bilibili.is_configured():
+        registry.register(bilibili)
+
+    # LinkedIn
+    linkedin = LinkedInPublisher()
+    if linkedin.is_configured():
+        registry.register(linkedin)
+
+    # Twitter
+    twitter = TwitterPublisher()
+    if twitter.is_configured():
+        registry.register(twitter)
+
     # 小红书
     xhs = XiaohongshuPublisher()
     if xhs.is_configured():
         registry.register(xhs)
-
-    # 未来添加：
-    # if twitter credentials available...
-    # registry.register(TwitterPublisher(...))
 
     return registry

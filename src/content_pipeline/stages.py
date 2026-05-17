@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Optional
 
 from .models import Content, ContentStatus
+from .config import PipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -61,24 +62,69 @@ class DraftStage(BaseStage):
 
 class ReviewStage(BaseStage):
     """
-    审核阶段 — 人工审核或自动规则审核。
-    
-    当前自动通过，可以配置自动批准规则。
+    Review stage — AI-powered content review using the AIReviewPanel.
+
+    Runs 5 dimensions (fact_check, quality, style, safety, platform_compliance)
+    against content and produces a ReviewResult with an auto_approve / flag /
+    reject decision.
+
+    When auto-approving, content is moved to SCHEDULED status.
+    When flagging, content stays in REVIEWING for human check.
+    When rejecting, content is returned with errors.
     """
 
     name = "review"
 
-    def __init__(self, auto_approve: bool = True):
-        self.auto_approve = auto_approve
+    def __init__(self, config: Optional[PipelineConfig] = None):
+        from .reviewer import AIReviewPanel
+
+        self.pipeline_config = config or PipelineConfig.load()
+        self.review_panel = AIReviewPanel(self.pipeline_config.review)
 
     def process(self, content: Content) -> StageResult:
-        if self.auto_approve:
-            content.status = ContentStatus.SCHEDULED
+        """Run AI review and update content status based on decision."""
+        try:
+            result = self.review_panel.review_and_attach(content)
+
             content.updated = datetime.now().strftime("%Y-%m-%d")
-            return StageResult(success=True, content=content, message="Auto-approved")
-        return StageResult(
-            success=True, content=content, message="Pending human review"
-        )
+
+            if result.decision == "auto_approve":
+                content.status = ContentStatus.SCHEDULED
+                return StageResult(
+                    success=True,
+                    content=content,
+                    message=f"AI auto-approved (confidence: {result.overall_confidence:.2f})",
+                )
+            elif result.decision == "flag":
+                content.status = ContentStatus.REVIEWING
+                return StageResult(
+                    success=True,
+                    content=content,
+                    message=f"Flagged for review: {'; '.join(result.notes)}",
+                )
+            elif result.decision == "reject":
+                content.status = ContentStatus.REVIEWING
+                return StageResult(
+                    success=False,
+                    content=content,
+                    message=f"Rejected: {'; '.join(result.notes)}",
+                    errors=result.notes,
+                )
+            else:
+                content.status = ContentStatus.REVIEWING
+                return StageResult(
+                    success=False,
+                    content=content,
+                    message="Review pending — errors or unknown decision.",
+                )
+
+        except Exception as e:
+            logger.exception("Review stage failed for content %s", content.id)
+            return StageResult(
+                success=False,
+                content=content,
+                message=f"Review error: {e}",
+            )
 
 
 class ValidateStage(BaseStage):

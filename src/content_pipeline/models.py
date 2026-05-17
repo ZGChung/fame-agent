@@ -27,6 +27,7 @@ class ContentStatus(Enum):
 class Platform(Enum):
     """支持的发布平台（完全解耦，互不依赖）"""
     XIAOHONGSHU = "xiaohongshu"
+    BILIBILI = "bilibili"
     TWITTER = "twitter"
     LINKEDIN = "linkedin"
     ZHIHU = "zhihu"
@@ -36,6 +37,7 @@ class Platform(Enum):
 
 PLATFORM_EMOJI = {
     Platform.XIAOHONGSHU: "📕",
+    Platform.BILIBILI: "🔵",
     Platform.TWITTER: "🐦",
     Platform.LINKEDIN: "💼",
     Platform.ZHIHU: "📖",
@@ -45,6 +47,7 @@ PLATFORM_EMOJI = {
 
 PLATFORM_MAX_CHARS = {
     Platform.XIAOHONGSHU: 1000,
+    Platform.BILIBILI: 2000,
     Platform.TWITTER: 280,
     Platform.LINKEDIN: 3000,
     Platform.ZHIHU: 10000,
