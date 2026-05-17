@@ -65,6 +65,63 @@ class ImageConfig:
 
 
 @dataclass
+class ReviewConfig:
+    """AI review panel configuration.
+
+    Controls which review dimensions are active, confidence thresholds,
+    the LLM model used for each dimension, and where criteria Markdown
+    files are loaded from.
+    """
+
+    enabled: bool = True
+    """Master switch to enable/disable AI review entirely."""
+
+    # Dimension toggles
+    fact_check: bool = True
+    quality: bool = True
+    style: bool = True
+    safety: bool = True
+    platform_compliance: bool = True
+
+    # Confidence thresholds for review levels
+    auto_threshold: float = 0.85
+    """Content with overall confidence >= this is auto-approved (review_level='auto')."""
+    review_auto_threshold: float = 0.7
+    """Content with overall confidence >= this but < auto_threshold gets 'review_auto'."""
+
+    # Quality score threshold (quality dimension uses 1-10 score)
+    quality_min_score: int = 7
+    """Content with quality < this score is rejected regardless of other dimensions."""
+
+    # Flag policy
+    auto_approve_on_flags: bool = False
+    """If True, content with only flags (no fails) is auto-approved.
+    If False (default), flagged content stays at 'review_auto' level."""
+
+    # LLM configuration
+    model: str = "gpt-4o-mini"
+    """Default model for all review dimensions. Can be overridden per dimension."""
+
+    api_key: str = ""
+    """OpenAI API key. Falls back to OPENAI_API_KEY environment variable."""
+
+    # Criteria files
+    criteria_dir: str = "criteria"
+    """Directory containing Markdown criteria files loaded as review context."""
+
+    # Timeouts
+    timeout: float = 30.0
+    """Timeout in seconds for each LLM call."""
+
+    max_retries: int = 2
+    """Max retries per dimension on API failure."""
+
+    # Per-dimension model overrides
+    dimension_models: dict[str, str] = field(default_factory=dict)
+    """Override the model for specific dimensions, e.g. {'fact_check': 'gpt-4o'}."""
+
+
+@dataclass
 class PipelineConfig:
     """完整配置"""
     version: str = "2.0"
@@ -84,6 +141,9 @@ class PipelineConfig:
     # 媒体配置
     video: VideoConfig = field(default_factory=VideoConfig)
     image: ImageConfig = field(default_factory=ImageConfig)
+
+    # AI review configuration
+    review: ReviewConfig = field(default_factory=ReviewConfig)
 
     # 旧文件夹路径（自动检测，不序列化）
     _legacy_folders: dict = field(default_factory=dict, repr=False, compare=False)
@@ -208,4 +268,30 @@ class PipelineConfig:
                     or os.environ.get("OPENAI_API_KEY", "")
                 ),
             ),
+            review=cls._parse_review_config(data.get("review", {})),
+        )
+
+    @staticmethod
+    def _parse_review_config(raw: dict) -> ReviewConfig:
+        """Parse review configuration from a raw dict."""
+        dim_models = raw.get("dimension_models", {})
+        if isinstance(dim_models, list):
+            dim_models = {d.get("dimension", ""): d.get("model", "") for d in dim_models}
+        return ReviewConfig(
+            enabled=raw.get("enabled", True),
+            fact_check=raw.get("fact_check", True),
+            quality=raw.get("quality", True),
+            style=raw.get("style", True),
+            safety=raw.get("safety", True),
+            platform_compliance=raw.get("platform_compliance", True),
+            auto_threshold=raw.get("auto_threshold", 0.85),
+            review_auto_threshold=raw.get("review_auto_threshold", 0.7),
+            quality_min_score=raw.get("quality_min_score", 7),
+            auto_approve_on_flags=raw.get("auto_approve_on_flags", False),
+            model=raw.get("model", "gpt-4o-mini"),
+            api_key=raw.get("api_key", ""),
+            criteria_dir=raw.get("criteria_dir", "criteria"),
+            timeout=raw.get("timeout", 30.0),
+            max_retries=raw.get("max_retries", 2),
+            dimension_models=dim_models,
         )

@@ -54,6 +54,57 @@ PLATFORM_MAX_CHARS = {
 
 
 @dataclass
+class ReviewResult:
+    """AI review result for a single piece of content.
+
+    Stores the outcome of all 5 review dimensions, overall confidence,
+    final status decision, and any notes from the reviewer.
+    """
+
+    dimensions: dict[str, dict] = field(default_factory=dict)
+    """Per-dimension results. Each key is a dimension name (fact_check, quality,
+    style, safety, platform_compliance), value is a dict with at minimum:
+    - verdict: str ("pass", "flag", "fail" or numeric score for quality)
+    - reasoning: str (explanation from the LLM)
+    - confidence: float (0.0 - 1.0)
+    """
+
+    overall_confidence: float = 0.0
+    """Aggregated confidence across all dimensions (0.0 - 1.0)."""
+
+    decision: str = "pending"
+    """Final review decision: 'auto_approve', 'flag', 'reject', 'pending'."""
+
+    review_level: str = "manual"
+    """Recommended review level based on confidence:
+    - 'auto': confidence >= 0.85, publish directly
+    - 'review_auto': confidence >= 0.7, notify on low confidence
+    - 'manual': confidence < 0.7, never auto-publish
+    """
+
+    notes: list[str] = field(default_factory=list)
+    """Human-readable notes and recommendations from the review."""
+
+    def is_approved(self) -> bool:
+        """Whether the content was approved (auto_approve or flag)."""
+        return self.decision in ("auto_approve", "flag")
+
+    def needs_human_review(self) -> bool:
+        """Whether this needs a human in the loop."""
+        return self.review_level == "manual" or self.decision == "reject"
+
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for storage in Content.review_result."""
+        return {
+            "dimensions": self.dimensions,
+            "overall_confidence": self.overall_confidence,
+            "decision": self.decision,
+            "review_level": self.review_level,
+            "notes": self.notes,
+        }
+
+
+@dataclass
 class Content:
     """一条内容的完整表示"""
     id: str
@@ -69,6 +120,8 @@ class Content:
     images: list[str] = field(default_factory=list)
     video_path: Optional[str] = None
     platform_variants: dict[str, str] = field(default_factory=dict)
+    review_result: Optional[dict] = None
+    """Serialized ReviewResult dict from AI review, or None if not yet reviewed."""
 
     @classmethod
     def from_markdown(cls, file_path: str | Path) -> Content:
