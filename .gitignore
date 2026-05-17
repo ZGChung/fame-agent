@@ -1,18 +1,19 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
 *.egg-info/
 dist/
 build/
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
@@ -20,16 +21,21 @@ build/
 .DS_Store
 Thumbs.db
 
-# OpenClaw
-.sessions_cache.json
-openclaw.env
+# Secrets & config
+.env
+config.local.json
+publishers/cookies/*.json
+!publishers/cookies/.gitkeep
 
-# Content Pipeline
-*.jpg
-*.jpeg
-*.png
+# Generated content
+content/output/*
 *.mp4
-*.mov
-queue/
-processing/
-output/
+*.wav
+*.mp3
+**/__pycache__/
+
+# Logs
+*.log
+
+# Temp
+/tmp/
