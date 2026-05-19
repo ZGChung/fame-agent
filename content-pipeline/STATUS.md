@@ -116,13 +116,33 @@ content-pipeline/
 
 ---
 
-## 📝 开发备注
 
-### 小红书发布方案
-- **方案**: Playwright 浏览器自动化
-- **优点**: 无需官方 API，使用真实浏览器登录
-- **流程**: Cookie 登录 → 打开发布页 → 上传图片 → 填写标题/正文 → 发布
 
-### 定时发布
-- 使用 scheduler.py 实现 cron 定时任务
-- 支持多平台定时发布
+---
+
+## 🚧 开发进度 (2026-05-19)
+
+### 已完成 (Phase 2 部分功能)
+- [x] **Twitter/X 发布器** (`publishers/twitter.py`) ✅
+  - Twitter API v2 Bearer Token 认证
+  - 超过 280 字自动拆分为推文串（reply chain）
+  - 平台变体（platform_variant）支持
+  - 12 项测试覆盖（配置检查、文本拆分、API 调用、错误处理）
+- [x] 全部 43 项测试通过
+
+### 待完成 (Phase 2 剩余)
+- [ ] AI Review Panel (`reviewer.py`) — 5 维度 AI 审核
+- [ ] 可编辑审核标准文件系统 (`criteria/`)
+- [ ] 各平台优化目标系统 (`objectives/`)
+- [ ] Bilibili 发布器
+- [ ] LinkedIn 发布器
+- [ ] 定时发布 / scheduling 集成到 src 包
+- [ ] 结构化日志 (`log.py`)
+- [ ] Pipeline 监控 (`monitor.py`)
+- [ ] GitHub Actions CI/CD
+
+### 待完成 (Phase 3-4)
+- [ ] Analytics 反馈闭环（分析引擎 + 标准更新器）
+- [ ] TikTok 发布器 / YouTube 发布器
+- [ ] Curator Agent（自动选题策展）
+- [ ] Threads 发布器
